@@ -1,0 +1,72 @@
+#=============================================================================#
+#                                                                             #
+# Author: Vishal Vaibhav                                                      #
+#                                                                             #
+# Description: makefile for creating .mexa64 binaries                         #
+#                                                                             #
+# History:                                                                    #
+# 19 July 2013: created                                                       #
+#                                                                             #
+#=============================================================================#
+# To run this makefile: make -f <name of the makefile>
+SHELL = /bin/sh
+
+MEX = mex
+CC = gcc
+INCLUDES = -I/usr/local/MATLAB/R2013a/extern/include   \
+           -I/usr/local/MATLAB/R2013a/simulink/include \
+           -DMATLAB_MEX_FILE                           \
+           -I../INCLUDE
+
+# CFLAG is used for the implicit rule to generate object files for C
+# $(CC) -c $(CFLAGS)
+CFLAGS = -ansi -D_GNU_SOURCE  -fexceptions -fPIC   \
+         -fno-omit-frame-pointer -pthread -std=c99 \
+         $(INCLUDES)
+
+MEXFLAGS = -v -g -largeArrayDims CFLAGS='$$CFLAGs -std=c99'
+LDFLAGS = -pthread -shared \
+          -Wl,--version-script,/usr/local/MATLAB/R2013a/extern/lib/glnxa64/mexFunction.map
+CLIBS = -L/usr/lib64/atlas -lm -lptcblas -latlas \
+	-L../BUILD -lfem1d
+
+BUILDDIR = ../MEXBUILD
+
+# add the .c mex files here
+SOURCES =   fem2lp.c       \
+	    fem1d_gmm.c    \
+            fem_flt2.c     \
+            fem_flt.c      \
+            fem_ilt2.c     \
+            fem_ilt.c      \
+            femlp_norm2.c  \
+            gfilters.c     \
+            LGLdataFM.c    \
+            LGLdataIM.c    \
+            LGLdataLT1.c   \
+            LGLdataLT2.c   \
+            lp2fem.c       \
+            pf_pade_exp.c  \
+            prjlp2fem.c    
+
+TARGETS = $(SOURCES:.c=.mexa64)
+OBJECTS = $(SOURCES:.c=.o)
+.PHONY: all clean
+# Automatic Variables
+# $@ - The file name of the target of the rule.
+# $< - The name of the first prerequisite
+#
+# If .o files are created automatically using implicit rules then are assumed
+# to be intermediate and are deleted automatically by make. Making it an 
+# explicit prerequisite of a special target .SECONDARY prevents this.
+# 
+.SECONDARY: $(OBJECTS)
+
+all : $(TARGETS)
+
+%.mexa64 : %.o
+	$(MEX) $(MEXFLAGS) $< -o $(BUILDDIR)/$@ $(CLIBS) 
+
+clean :
+	rm -f $(OBJECTS)
+

@@ -1,0 +1,22 @@
+Naming Conventions:
+==================
+(1) Data types are in lower cases.
+(2) Enums, Macros and constant defines are upper or camel case.
+(3) Function are named after their parent module: <module name>_<func name>.
+
+
+
+Matrix Storage Schemes:
+======================
+
+(1) Row major format: 
+    Row entries are adjacent in memory. Let M be a matrix and pM be the
+    pointer to M. Then
+        M[i][j] = pM[ i + j*row ];  i -> 0 to (row-1), j -> 0 to (col-1)
+
+(2) Column major format: 
+    Column entries are adjacent in memory. Let M be a matrix and pM be the
+    pointer to M. Then
+        M[i][j] = pM[ i*col + j ];  i -> 0 to (row-1), j -> 0 to (col-1)
+
+MATLAB uses column major storage formats while C uses row major format.
