@@ -42,20 +42,22 @@ SOURCES = CUnit_matrix.c   \
           speedup_pfem1d.c \
           CUnit_fem1d_Schroedinger.c   \
           CUnit_pfem1d_Schroedinger.c  \
-          CUnit_SchroedingerEquation.c \
           CUnit_pthpool_func.c         \
           CUnit_pfem1d.c       
 
-OBJECTS = $(SOURCES:.c=.o)
-TARGETS = $(SOURCES:%.c=%)
+TSTBIN = ./BIN
+OBJECTS = $(SOURCES:%.c=$(TSTBIN)/%.o)
+TARGETS = $(SOURCES:%.c=$(TSTBIN)/%)
 
 .PHONY: all clean
 
 all : $(TARGETS)
 
-%: %.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
+$(TSTBIN)/%.o : %.o 
+	mv $< $@
 
+$(TSTBIN)/% : $(TSTBIN)/%.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
 
 clean :
 	rm -f $(OBJECTS)
