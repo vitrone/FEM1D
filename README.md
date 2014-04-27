@@ -1,4 +1,2 @@
-FEM1D
-=====
-
-Finite-Element Method for 1D problems
+Testing GitHub repo FEM1D.
+Testing GitHub repo FEM1D.
