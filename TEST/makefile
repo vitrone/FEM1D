@@ -46,14 +46,17 @@ SOURCES = CUnit_matrix.c   \
           CUnit_pfem1d.c       
 
 TSTBIN = BIN
-OBJECTS = $(SOURCES:%.c=$(TSTBIN)/%.o)
+#OBJECTS = $(SOURCES:%.c=$(TSTBIN)/%.o)
 TARGETS = $(SOURCES:%.c=$(TSTBIN)/%)
 
 
-.PHONY: all clean
+.PHONY: bin_dir all clean
 
 
-all : $(TARGETS)
+all : bin_dir $(TARGETS) 
+
+bin_dir:
+	mkdir -p $(TSTBIN)
 
 $(TSTBIN)/% : $(TSTBIN)/%.o
 	echo "Building binary files..."
