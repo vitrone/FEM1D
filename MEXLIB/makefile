@@ -63,21 +63,10 @@ SOURCES =   fem2lp.c       \
             prjlp2fem.c
 
 
-EXPORT_TARGETS = $(SOURCES:%.c=$(BUILDDIR)/%.mexa64)
-TARGETS = $(SOURCES:%.c=%.mexa64)
-OBJECTS = $(SOURCES:%.c=%.o)
+TARGETS = $(SOURCES:%.c=$(BUILDDIR)/%.mexa64)
+# OBJECTS = $(SOURCES:%.c=%.o)
 
-LIB_SOURCES  = fem1d.c    \
-               legendre.c \
-               jacobi.c   \
-               matlib.c   \
-               pthpool.c  
-
-HEADERS = $(LIB_SOURCES:%.c=$(INC_DIR)/%.h)
-HEADERS += $(INC_DIR)/debug.h
-HEADERS += $(INC_DIR)/basic.h
-
-LIB_DEP = $(LIB_SOURCES:%.c=$(LIB_DIR)/%.c)
+LIB_DEP = ../BUILD/libfem1d.so
 
 .PHONY: all clean
 # Automatic Variables
@@ -88,9 +77,9 @@ LIB_DEP = $(LIB_SOURCES:%.c=$(LIB_DIR)/%.c)
 # to be intermediate and are deleted automatically by make. Making it an 
 # explicit prerequisite of a special target .SECONDARY prevents this.
 # 
-.SECONDARY: $(OBJECTS)
+# .SECONDARY: $(OBJECTS)
 
-all : $(EXPORT_TARGETS) 
+all : $(TARGETS) 
 
 # Pattern Rules: A pattern rule contains the character '%' 
 # (exactly one of them) in the target; otherwise, it looks exactly like an 
@@ -109,12 +98,16 @@ all : $(EXPORT_TARGETS)
 # files that exist or can be made. These files become prerequisites of 
 # the target.
 
-$(BUILDDIR)/%.mexa64: %.mexa64
-	mv $< $@
+#$(BUILDDIR)/%.mexa64: %.mexa64
+#	mv $< $@
 
-%.mexa64 : %.o $(HEADERS) $(LIB_DEP)
+$(BUILDDIR)/%.mexa64 : $(BUILDDIR)/%.o $(LIB_DEP)
+	echo "Build mex-binary files..."
 	$(CC) $(LDFLAGS) $< -o $@ $(CLIBS) 
 
+$(BUILDDIR)/%.o : %.c
+	echo "Building object files..."
+	$(CC) $(CFLAGS) -c $< -o $@ 
 
 # Note: The following contruct gives error while running the MATLAB unittester.
 # In fact it is incorrect because it lists all the elements in OBJECTS as

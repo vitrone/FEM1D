@@ -67,26 +67,25 @@ SOURCES = fem1d.c    \
           pfem1d.c
 
 OBJECTS = $(SOURCES:%.c=%.o)
-# HEADERS = $(SOURCES:%.c=$(INC_DIR)/%.h)
 
-HEADERS = $(INC_DIR)/fem1d.h    \
-	  $(INC_DIR)/legendre.h \
-	  $(INC_DIR)/jacobi.h   \
-	  $(INC_DIR)/matlib.h   \
-	  $(INC_DIR)/pthpool.h  \
-	  $(INC_DIR)/pfem1d.h   \
-	  $(INC_DIR)/ehandler.h \
-	  $(INC_DIR)/debug.h
-
+HLIST = fem1d.h    \
+	legendre.h \
+	jacobi.h   \
+	matlib.h   \
+	pthpool.h  \
+	pfem1d.h   \
+	ehandler.h \
+	debug.h
+HEADERS = $(addprefix $(INC_DIR)/, $(HLIST))
 
 .PHONY: all clean
 
-.SECONDARY: $(OBJECTS)
+#.SECONDARY: $(OBJECTS)
 
 all : $(TARGET) 
 
 $(TARGET): $(OBJECTS) $(HEADERS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
 
 
 clean :

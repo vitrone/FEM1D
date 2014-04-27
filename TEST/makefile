@@ -45,19 +45,24 @@ SOURCES = CUnit_matrix.c   \
           CUnit_pthpool_func.c         \
           CUnit_pfem1d.c       
 
-TSTBIN = ./BIN
+TSTBIN = BIN
 OBJECTS = $(SOURCES:%.c=$(TSTBIN)/%.o)
 TARGETS = $(SOURCES:%.c=$(TSTBIN)/%)
 
+
 .PHONY: all clean
+
 
 all : $(TARGETS)
 
-$(TSTBIN)/%.o : %.o 
-	mv $< $@
-
 $(TSTBIN)/% : $(TSTBIN)/%.o
+	echo "Building binary files..."
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
+
+$(TSTBIN)/%.o : %.c
+	echo "Building object files..."
+	$(CC) $(CFLAGS) -c $< -o $@ 
+
 
 clean :
 	rm -f $(OBJECTS)
