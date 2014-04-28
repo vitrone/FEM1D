@@ -50,6 +50,10 @@ SOURCES =   fem2lp.c       \
             fem1d_gmm.c    \
             fem_flt2.c     \
             fem_flt.c      \
+            mxfem1d_FLT.c  \
+            mxfem1d_ILT.c  \
+            mxfem1d_F2L.c  \
+            mxfem1d_L2F.c  \
             fem_ilt2.c     \
             fem_ilt.c      \
             femlp_norm2.c  \
@@ -64,7 +68,7 @@ SOURCES =   fem2lp.c       \
 
 
 TARGETS = $(SOURCES:%.c=$(BUILDDIR)/%.mexa64)
-# OBJECTS = $(SOURCES:%.c=%.o)
+OBJECTS = $(SOURCES:%.c=$(BUILDDIR)/%.o)
 
 LIB_DEP = ../BUILD/libfem1d.so
 
