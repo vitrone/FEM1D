@@ -25,11 +25,11 @@ void mexFunction
 
     if(nrhs!=2) 
     {
-        mexErrMsgIdAndTxt("FEM1D:F2L:nrhs","Two inputs required.");
+        mexErrMsgIdAndTxt("FEM1D:L2F:nrhs","Two inputs required.");
     }
     if(nlhs!=1) 
     {
-        mexErrMsgIdAndTxt("FEM1D:F2L:nlhs","One output required.");
+        mexErrMsgIdAndTxt("FEM1D:L2F:nlhs","One output required.");
     } 
     
     matlib_index p = (matlib_index)mxGetScalar(prhs[0]);

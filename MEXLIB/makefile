@@ -58,8 +58,12 @@ SOURCES =   fem2lp.c       \
             fem_ilt.c      \
             femlp_norm2.c  \
             gfilters.c     \
+            mxLGLdataFM.c  \
+            mxLGLdataIM.c  \
             LGLdataFM.c    \
             LGLdataIM.c    \
+            mxLGLdataLT1.c \
+            mxLGLdataLT2.c \
             LGLdataLT1.c   \
             LGLdataLT2.c   \
             lp2fem.c       \

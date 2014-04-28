@@ -35,8 +35,8 @@ void mexFunction
     matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
 
     matlib_dv vbr = { .len    = mxGetN(prhs[1]), 
-                     .elem_p = mxGetPr(prhs[1]),
-                     .type   = MATLIB_COL_VECT};
+                      .elem_p = mxGetPr(prhs[1]),
+                      .type   = MATLIB_COL_VECT};
 
     matlib_index dim = (vbr.len-1)*(p+1)/p;
     

@@ -1,18 +1,13 @@
-/******************************************************************************
- * Name   : legendre.c                                                        *
- * Author : Vishal Vaibhav                                                    *
- *                                                                            *
- * Description : This module defines all functions for implementation of      *
- * Legendre transforms.                                                       *
- *                                                                            *
- * History : Creation 21 July 2013                                            *
- *                                                                            *
- *                                                                            *
- ******************************************************************************/
+/*============================================================================+/
+ | Name   : legendre.c                                                   
+ | Author : Vishal Vaibhav                                               
+ |                                                                       
+ | Description : This module defines all functions for implementation of 
+ | Legendre transforms.                                                  
+ |                                                                       
+ | History : Creation 21 July 2013                                       
+/+============================================================================*/
 
-/******************************************************************************
- *                              System Includes                               *
- ******************************************************************************/
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

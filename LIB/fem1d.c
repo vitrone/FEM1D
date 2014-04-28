@@ -1,18 +1,15 @@
-/******************************************************************************
- * Name   : fem1d.c                                                           *
- * Author : Vishal Vaibhav                                                    *
- *                                                                            *
- * Description : This module defines all the functions for implementing       *
- * finite element method. See the documentation for mathematical details.     *
- *                                                                            *
- * History : Created 21 July 2013.                                            *
- *                                                                            *
- *                                                                            *
- ******************************************************************************/
+/*============================================================================+/
+ | 
+ |  Name   : fem1d.c                                                      
+ |  Author : Vishal Vaibhav                                               
+ |                                                                        
+ |  Description : This module defines all the functions for implementing  
+ |  finite element method. See the documentation for mathematical details.
+ |                                                                        
+ |  History : Created 21 July 2013.                                       
+ |
+/+============================================================================*/
 
-/******************************************************************************
- *                              Global Includes                               *
- ******************************************************************************/
 #include <math.h>
 #include <complex.h>
 #include <stdio.h>
