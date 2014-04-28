@@ -50,6 +50,10 @@ SOURCES =   fem2lp.c       \
             fem1d_gmm.c    \
             fem_flt2.c     \
             fem_flt.c      \
+            mxLGLdataFM.c  \
+            mxLGLdataIM.c  \
+            mxLGLdataLT1.c \
+            mxLGLdataLT2.c \
             mxfem1d_FLT.c  \
             mxfem1d_ILT.c  \
             mxfem1d_F2L.c  \
@@ -58,12 +62,8 @@ SOURCES =   fem2lp.c       \
             fem_ilt.c      \
             femlp_norm2.c  \
             gfilters.c     \
-            mxLGLdataFM.c  \
-            mxLGLdataIM.c  \
             LGLdataFM.c    \
             LGLdataIM.c    \
-            mxLGLdataLT1.c \
-            mxLGLdataLT2.c \
             LGLdataLT1.c   \
             LGLdataLT2.c   \
             lp2fem.c       \
@@ -110,11 +110,11 @@ all : $(TARGETS)
 #	mv $< $@
 
 $(BUILDDIR)/%.mexa64 : $(BUILDDIR)/%.o $(LIB_DEP)
-	echo "Build mex-binary files..."
+	@echo "Building mex-binary files..."
 	$(CC) $(LDFLAGS) $< -o $@ $(CLIBS) 
 
 $(BUILDDIR)/%.o : %.c
-	echo "Building object files..."
+	@echo "Building object files..."
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
 # Note: The following contruct gives error while running the MATLAB unittester.

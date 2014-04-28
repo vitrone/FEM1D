@@ -66,7 +66,7 @@ SOURCES = fem1d.c    \
           pthpool.c  \
           pfem1d.c
 
-OBJECTS = $(SOURCES:%.c=%.o)
+OBJECTS = $(SOURCES:%.c=$(BUILDDIR)/%.o)
 
 HLIST = fem1d.h    \
 	legendre.h \
@@ -85,8 +85,12 @@ HEADERS = $(addprefix $(INC_DIR)/, $(HLIST))
 all : $(TARGET) 
 
 $(TARGET): $(OBJECTS) $(HEADERS)
+	@echo "Creating shared object..."	
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
 
+$(BUILDDIR)/%.o: %.c
+	@echo "Building object files..."
+	$(CC) $(CFLAGS) -c $< -o $@ 	
 
 clean :
 	rm -f $(OBJECTS)
