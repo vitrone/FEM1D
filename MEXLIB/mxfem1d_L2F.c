@@ -41,7 +41,7 @@ void mexFunction
     matlib_index dim = (ur.len)*p/(p+1);
     
 
-    if(mxIsComplex(prhs[2]))
+    if(mxIsComplex(prhs[1]))
     {
         matlib_dv ui = {  .len    = ur.len,
                           .elem_p = mxGetPr(prhs[1]),

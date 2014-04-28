@@ -41,7 +41,7 @@ void mexFunction
     matlib_index dim = (vbr.len-1)*(p+1)/p;
     
 
-    if(mxIsComplex(prhs[2]))
+    if(mxIsComplex(prhs[1]))
     {
         matlib_dv vbi = { .len    = vbr.len, 
                           .elem_p = mxGetPr(prhs[1]),

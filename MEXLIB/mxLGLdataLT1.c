@@ -30,7 +30,7 @@ void mexFunction
     } 
     
     matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
-    double tol     = (double)mxGetScalar(prhs[0]);
+    double tol     = (double)mxGetScalar(prhs[1]);
 
     plhs[0] = mxCreateDoubleMatrix( p+1, 1, mxREAL);
     plhs[1] = mxCreateDoubleMatrix( p+1, 1, mxREAL);
