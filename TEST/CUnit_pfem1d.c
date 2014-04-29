@@ -21,7 +21,7 @@
 #include "mkl.h"
 #include "omp.h"
 
-//#define NDEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
@@ -35,9 +35,7 @@
 #include <CUnit/Basic.h>
 #include <CUnit/TestDB.h>
 
-static const double TOL = 1e-9;
-#define MAX_NUM_CPU 7
-
+static const matlib_real TOL = 1e-9;
 
 /*============================================================================*/
 int init_suite(void)
@@ -52,14 +50,14 @@ int clean_suite(void)
 /*============================================================================*/
 void Gaussian
 ( 
-    matlib_dv x, 
-    matlib_dv u
+    matlib_xv x, 
+    matlib_xv u
 )
 {
 
     debug_enter("%s", "");
     
-    double *xptr;
+    matlib_real *xptr;
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
@@ -70,7 +68,7 @@ void Gaussian
 }
 
 
-void test_pfem1d_DFLT_general(matlib_index p)
+void test_pfem1d_XFLT_general(matlib_index p)
 {
     
     /* define number of timing experiments and repeatitions */ 
@@ -90,23 +88,23 @@ void test_pfem1d_DFLT_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, U, V;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -118,17 +116,17 @@ void test_pfem1d_DFLT_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( dim, &V, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &V, MATLIB_COL_VECT);
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_DFLT( N, FM, u, U);
-            pfem1d_DFLT(N, FM, u, V, num_threads, mp);
+            fem1d_XFLT( N, FM, u, U);
+            pfem1d_XFLT(N, FM, u, V, num_threads, mp);
 
             BEGIN_DTRACE
                 for(i=0; i<U.len; i++)
@@ -138,17 +136,17 @@ void test_pfem1d_DFLT_general(matlib_index p)
                 }
             END_DTRACE
             /* Analyze error */ 
-            norm_actual = matlib_dnrm2(U);
-            matlib_daxpy(-1.0, U, V);
-            e_relative = matlib_dnrm2(V)/norm_actual;
+            norm_actual = matlib_xnrm2(U);
+            matlib_xaxpy(-1.0, U, V);
+            e_relative = matlib_xnrm2(V)/norm_actual;
             debug_body("Relative error: % 0.16g", e_relative);
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -156,16 +154,16 @@ void test_pfem1d_DFLT_general(matlib_index p)
 
 
 }
-void test_pfem1d_DFLT(void)
+void test_pfem1d_XFLT(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DFLT_general(p);
+        test_pfem1d_XFLT_general(p);
     }
 }
 
-void test_pfem1d_DILT_general(matlib_index p)
+void test_pfem1d_XILT_general(matlib_index p)
 {
     
     /* define number of timing experiments and repeatitions */ 
@@ -185,23 +183,23 @@ void test_pfem1d_DILT_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, v, U;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, v, U;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -213,18 +211,18 @@ void test_pfem1d_DILT_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
-        matlib_create_dv( x.len, &v, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &v, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_DILT( N, IM, U, u);
-            pfem1d_DILT(N, IM, U, v, num_threads, mp);
+            fem1d_XILT( N, IM, U, u);
+            pfem1d_XILT(N, IM, U, v, num_threads, mp);
 
             BEGIN_DTRACE
                 for(i=0; i<U.len; i++)
@@ -234,17 +232,17 @@ void test_pfem1d_DILT_general(matlib_index p)
                 }
             END_DTRACE
             /* Analyze error */ 
-            norm_actual = matlib_dnrm2(u);
-            matlib_daxpy(-1.0, u, v);
-            e_relative = matlib_dnrm2(v)/norm_actual;
+            norm_actual = matlib_xnrm2(u);
+            matlib_xaxpy(-1.0, u, v);
+            e_relative = matlib_xnrm2(v)/norm_actual;
             debug_body("Relative error: % 0.16g", e_relative);
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)v.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(v.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -252,20 +250,20 @@ void test_pfem1d_DILT_general(matlib_index p)
 
 
 }
-void test_pfem1d_DILT(void)
+void test_pfem1d_XILT(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DILT_general(p);
+        test_pfem1d_XILT_general(p);
     }
 }
 /*============================================================================*/
-void Gaussian_dfunc2
+void Gaussian_xfunc2
 ( 
-    const matlib_dv x, 
-    const matlib_dv t, 
-          matlib_dm y
+    const matlib_xv x, 
+    const matlib_xv t, 
+          matlib_xm y
 )
 {
     matlib_index i, j;
@@ -284,7 +282,7 @@ void Gaussian_dfunc2
     }
 }
 
-void test_pfem1d_DFLT2_general(matlib_index p)
+void test_pfem1d_XFLT2_general(matlib_index p)
 {
 
     debug_enter("polynomial degree: %d", p);
@@ -305,35 +303,35 @@ void test_pfem1d_DFLT2_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, t;
+    matlib_xv x, t;
 
     matlib_index Nt = 2;
-    double dt = 1.0e-3;
-    matlib_create_dv( Nt, &t, MATLIB_COL_VECT);
+    matlib_real dt = 1.0e-3;
+    matlib_create_xv( Nt, &t, MATLIB_COL_VECT);
 
     t.elem_p[0] = 0;
     for(i=1; i<t.len; i++)
     {
         t.elem_p[i] = t.elem_p[i-1] + dt;
     }
-    matlib_dm u, U, V;
-    double dim;
-    double norm_actual, e_relative;
-    matlib_dv u_tmp1, u_tmp2;
+    matlib_xm u, U, V;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
+    matlib_xv u_tmp1, u_tmp2;
 
     for(j=0; j<num_exp; j++)
     {
@@ -345,18 +343,18 @@ void test_pfem1d_DFLT2_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dm( x.len, t.len, &u, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+        matlib_create_xm( x.len, t.len, &u, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
-        Gaussian_dfunc2(x, t, u);
+        Gaussian_xfunc2(x, t, u);
         dim = N*(p+1);
-        matlib_create_dm( dim, t.len, &U, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-        matlib_create_dm( dim, t.len, &V, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+        matlib_create_xm( dim, t.len, &U, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+        matlib_create_xm( dim, t.len, &V, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_DFLT2( N, FM, u, U);
+            fem1d_XFLT2( N, FM, u, U);
 
-            pfem1d_DFLT2(N, FM, u, V, num_threads, mp);
+            pfem1d_XFLT2(N, FM, u, V, num_threads, mp);
 
             /* Analyze error */ 
             BEGIN_DTRACE
@@ -378,36 +376,36 @@ void test_pfem1d_DFLT2_general(matlib_index p)
             u_tmp1.len = U.lenc * U.lenr;
             u_tmp2.len = V.lenc * V.lenr;
 
-            norm_actual = matlib_dnrm2(u_tmp1);
-            matlib_daxpy(-1.0, u_tmp2, u_tmp1);
-            e_relative = matlib_dnrm2(u_tmp1)/norm_actual;
+            norm_actual = matlib_xnrm2(u_tmp1);
+            matlib_xaxpy(-1.0, u_tmp2, u_tmp1);
+            e_relative = matlib_xnrm2(u_tmp1)/norm_actual;
 
             debug_body("Relative error: % 0.16g", e_relative);
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
     pthpool_destroy_threads(num_threads, mp);
 }
 
-void test_pfem1d_DFLT2(void)
+void test_pfem1d_XFLT2(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DFLT2_general(p);
+        test_pfem1d_XFLT2_general(p);
     }
 }
 
 /*============================================================================*/
 
-void test_pfem1d_DF2L_general(matlib_index p)
+void test_pfem1d_XF2L_general(matlib_index p)
 {
     
     /* define number of timing experiments and repeatitions */ 
@@ -427,23 +425,23 @@ void test_pfem1d_DF2L_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, vb, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, vb, U, V;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -455,21 +453,21 @@ void test_pfem1d_DF2L_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( dim, &V, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &vb, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
-        fem1d_DL2F( p, U, vb);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &V, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &vb, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
+        fem1d_XL2F( p, U, vb);
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_DF2L( p, vb, U);
+            fem1d_XF2L( p, vb, U);
 
-            pfem1d_DF2L(p, vb, V, num_threads, mp);
+            pfem1d_XF2L(p, vb, V, num_threads, mp);
 
             /* Analyze error */ 
             BEGIN_DTRACE
@@ -480,36 +478,36 @@ void test_pfem1d_DF2L_general(matlib_index p)
                 }
             END_DTRACE
 
-            norm_actual = matlib_dnrm2(U);
-            matlib_daxpy(-1.0, U, V);
-            e_relative = matlib_dnrm2(V)/norm_actual;
+            norm_actual = matlib_xnrm2(U);
+            matlib_xaxpy(-1.0, U, V);
+            e_relative = matlib_xnrm2(V)/norm_actual;
             debug_body("Relative error: % 0.16g", e_relative);
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)vb.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(vb.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
     pthpool_destroy_threads(num_threads, mp);
 }
 
-void test_pfem1d_DF2L(void)
+void test_pfem1d_XF2L(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DF2L_general(p);
+        test_pfem1d_XF2L_general(p);
     }
 }
 
 /*============================================================================*/
 
-void test_pfem1d_DPrjL2F_general(matlib_index p)
+void test_pfem1d_XPrjL2F_general(matlib_index p)
 {
     
     debug_enter("polynomial degree: %d", p);
@@ -530,23 +528,23 @@ void test_pfem1d_DPrjL2F_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, Pvb1, Pvb2, U;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, Pvb1, Pvb2, U;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -558,20 +556,20 @@ void test_pfem1d_DPrjL2F_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &Pvb1, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &Pvb2, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &Pvb1, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &Pvb2, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_DPrjL2F( p, U, Pvb1);
+            fem1d_XPrjL2F( p, U, Pvb1);
 
-            pfem1d_DPrjL2F(p, U, Pvb2, num_threads, mp);
+            pfem1d_XPrjL2F(p, U, Pvb2, num_threads, mp);
 
             /* Analyze error */ 
             BEGIN_DTRACE
@@ -582,18 +580,18 @@ void test_pfem1d_DPrjL2F_general(matlib_index p)
                 }
             END_DTRACE
 
-            norm_actual = matlib_dnrm2(Pvb1);
-            matlib_daxpy(-1.0, Pvb1, Pvb2);
-            e_relative = matlib_dnrm2(Pvb2)/norm_actual;
+            norm_actual = matlib_xnrm2(Pvb1);
+            matlib_xaxpy(-1.0, Pvb1, Pvb2);
+            e_relative = matlib_xnrm2(Pvb2)/norm_actual;
             debug_body("Relative error: % 0.16g", e_relative);
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)Pvb1.elem_p);
-        matlib_free((void*)Pvb2.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(Pvb1.elem_p);
+        matlib_free(Pvb2.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -603,18 +601,18 @@ void test_pfem1d_DPrjL2F_general(matlib_index p)
 }
 
 
-void test_pfem1d_DPrjL2F(void)
+void test_pfem1d_XPrjL2F(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DPrjL2F_general(p);
+        test_pfem1d_XPrjL2F_general(p);
     }
 }
 
 /*============================================================================*/
 
-void test_pfem1d_DNorm2_general(matlib_index p)
+void test_pfem1d_XNorm2_general(matlib_index p)
 {
     
     debug_enter("polynomial degree: %d", p);
@@ -635,23 +633,23 @@ void test_pfem1d_DNorm2_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, U;
-    double dim;
-    double norm1, norm2, e_relative;
+    matlib_xv x, u, U;
+    matlib_real dim;
+    matlib_real norm1, norm2, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -663,19 +661,19 @@ void test_pfem1d_DNorm2_general(matlib_index p)
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
-            norm1 = fem1d_DNorm2( p, N, U);
+            norm1 = fem1d_XNorm2( p, N, U);
             debug_body("serial norm: %0.16f", norm1);
 
-            norm2 = pfem1d_DNorm2(p, N, U, num_threads, mp);
+            norm2 = pfem1d_XNorm2(p, N, U, num_threads, mp);
             debug_body("parallel norm: %0.16f", norm2);
 
             /* Analyze error */ 
@@ -684,9 +682,9 @@ void test_pfem1d_DNorm2_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -696,12 +694,12 @@ void test_pfem1d_DNorm2_general(matlib_index p)
 }
 
 
-void test_pfem1d_DNorm2(void)
+void test_pfem1d_XNorm2(void)
 {
     matlib_index p_max = 15;
     for (matlib_index p=2; p<p_max; p++)
     {
-        test_pfem1d_DNorm2_general(p);
+        test_pfem1d_XNorm2_general(p);
     }
 }
 /*============================================================================+/
@@ -710,14 +708,14 @@ void test_pfem1d_DNorm2(void)
 
 void zGaussian
 ( 
-    matlib_dv x, 
+    matlib_xv x, 
     matlib_zv u
 )
 {
 
     debug_enter("%s", "");
     
-    double *xptr;
+    matlib_real *xptr;
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
@@ -749,24 +747,24 @@ void test_pfem1d_ZFLT_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -807,10 +805,10 @@ void test_pfem1d_ZFLT_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -848,24 +846,24 @@ void test_pfem1d_ZILT_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, v, U;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -907,10 +905,10 @@ void test_pfem1d_ZILT_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)v.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(v.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -928,8 +926,8 @@ void test_pfem1d_ZILT(void)
 /*============================================================================*/
 void Gaussian_zfunc2
 ( 
-    const matlib_dv x, 
-    const matlib_dv t, 
+    const matlib_xv x, 
+    const matlib_xv t, 
           matlib_zm y
 )
 {
@@ -970,25 +968,25 @@ void test_pfem1d_ZFLT2_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, t;
+    matlib_xv x, t;
 
     matlib_index Nt = 2;
-    double dt = 1.0e-3;
-    matlib_create_dv( Nt, &t, MATLIB_COL_VECT);
+    matlib_real dt = 1.0e-3;
+    matlib_create_xv( Nt, &t, MATLIB_COL_VECT);
 
     t.elem_p[0] = 0;
     for(i=1; i<t.len; i++)
@@ -996,8 +994,8 @@ void test_pfem1d_ZFLT2_general(matlib_index p)
         t.elem_p[i] = t.elem_p[i-1] + dt;
     }
     matlib_zm u, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
     matlib_zv u_tmp1, u_tmp2;
 
     for(j=0; j<num_exp; j++)
@@ -1053,10 +1051,10 @@ void test_pfem1d_ZFLT2_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -1093,24 +1091,24 @@ void test_pfem1d_ZF2L_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, V, vb;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -1154,11 +1152,11 @@ void test_pfem1d_ZF2L_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)vb.elem_p);
-        matlib_free((void*)U.elem_p);
-        matlib_free((void*)V.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(vb.elem_p);
+        matlib_free(U.elem_p);
+        matlib_free(V.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -1196,24 +1194,24 @@ void test_pfem1d_ZPrjL2F_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, Pvb1, Pvb2;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -1258,11 +1256,11 @@ void test_pfem1d_ZPrjL2F_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)Pvb1.elem_p);
-        matlib_free((void*)Pvb2.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(Pvb1.elem_p);
+        matlib_free(Pvb2.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -1299,24 +1297,24 @@ void test_pfem1d_ZNorm2_general(matlib_index p)
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U;
-    double dim;
-    double norm1, norm2, e_relative;
+    matlib_real dim;
+    matlib_real norm1, norm2, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
@@ -1349,9 +1347,9 @@ void test_pfem1d_ZNorm2_general(matlib_index p)
             
             CU_ASSERT_TRUE(e_relative<TOL);
         }
-        matlib_free((void*)x.elem_p);
-        matlib_free((void*)u.elem_p);
-        matlib_free((void*)U.elem_p);
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
@@ -1391,12 +1389,12 @@ int main(void)
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Parallel DFLT"           , test_pfem1d_DFLT    },
-        { "Parallel DILT"           , test_pfem1d_DILT    },
-        { "Parallel DFLT2"          , test_pfem1d_DFLT2   },
-        { "Parallel DF2L"           , test_pfem1d_DF2L    },
-        { "Parallel projection DL2F", test_pfem1d_DPrjL2F },
-        { "Parallel D-L2 norm"      , test_pfem1d_DNorm2  },
+        { "Parallel XFLT"           , test_pfem1d_XFLT    },
+        { "Parallel XILT"           , test_pfem1d_XILT    },
+        { "Parallel XFLT2"          , test_pfem1d_XFLT2   },
+        { "Parallel XF2L"           , test_pfem1d_XF2L    },
+        { "Parallel projection XL2F", test_pfem1d_XPrjL2F },
+        { "Parallel X-L2 norm"      , test_pfem1d_XNorm2  },
         { "Parallel ZFLT"           , test_pfem1d_ZFLT    },
         { "Parallel ZFLT2"          , test_pfem1d_ZFLT2   },
         { "Parallel ZILT"           , test_pfem1d_ZILT    },

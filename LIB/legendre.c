@@ -21,25 +21,25 @@
 
 /*============================================================================*/
 
-double Legendre_LGL (double x, int n)
-/******************************************************************************
- * Description: This function calculates the value of the LGL polynomials at a*
- * given point x.                                                             *
- * LGL polynomial is define as $(1-x^2)L'_n(x)$.                              *
- *                  $(1-x^2)L'_n(x)=nL_{n-1}(x)-nxL_n(x)$                     *
- *                                                                            *
- * Input(s) :                                                                 *
- *  x - coordinate point                                                      *
- *  n - degree of the Legendre polynomial                                     *
- *                                                                            *
- * Output(s): value of the LGL polynomial                                     *
- *                                                                            *
- ******************************************************************************/
+matlib_real Legendre_LGL (matlib_real x, matlib_index n)
+/* 
+ * Description: This function calculates the value of the LGL polynomials at a
+ * given point x.                                                             
+ * LGL polynomial is define as $(1-x^2)L'_n(x)$.                              
+ *                  $(1-x^2)L'_n(x)=nL_{n-1}(x)-nxL_n(x)$                     
+ *                                                                            
+ * Input(s) :                                                                 
+ *  x - coordinate point                                                      
+ *  n - degree of the Legendre polynomial                                     
+ *                                                                            
+ * Output(s): value of the LGL polynomial                                     
+ *
+ * */
 {
     assert(n>2);
     assert(fabs(x)>1.0);
 
-    double LP[2], tmp, r;
+    matlib_real LP[2], tmp, r;
     matlib_index i; 
     
     LP[0] = 1.0;
@@ -59,31 +59,32 @@ double Legendre_LGL (double x, int n)
 
 void CalcLP
 ( 
-    int n,        
-    double *LP,    
-    double x, 
-    double C[n-1],
-    double D[n-1]
+    matlib_index n,        
+    matlib_real *LP,    
+    matlib_real x, 
+    matlib_real C[n-1],
+    matlib_real D[n-1]
 )
-/******************************************************************************
- * Description: This function calculates the value of the Legendre polynomials*
- * $L_n$ and $L_{n-1}$.                                                       *
- *                                                                            *
- * Input(s) :                                                                 *
- *  n - degree of the Legendre polynomial                                     *
- *  x - coordinate point                                                      *
- *  C and D - are the array of coefficients that shows up in the recurrence   *
- *  relation of the Legendre polynomials (precomputed coeff. speeds up the    *
- *  computation).                                                             *
- *   $L_n(x)=[(2n-1)/n]xL_{n-1}(x)-[(n-1)/n]L_{n-2}(x)$                       *
- *                                                                            *
- * Output(s):                                                                 *
- *  LP - pointer to the array [L_{n-1}, L_{n}]                                *
- *                                                                            *
- ******************************************************************************/
+/* 
+ *
+ * Description: This function calculates the value of the Legendre polynomials
+ * $L_n$ and $L_{n-1}$.                                                       
+ *                                                                            
+ * Input(s) :                                                                 
+ *  n - degree of the Legendre polynomial                                     
+ *  x - coordinate pomatlib_index                                               
+ *  C and D - are the array of coefficients that shows up in the recurrence     
+ *  relation of the Legendre polynomials (precomputed coeff. speeds up the      
+ *  computation).                                                             
+ *   $L_n(x)=[(2n-1)/n]xL_{n-1}(x)-[(n-1)/n]L_{n-2}(x)$                         
+ *                                                                              
+ * Output(s):                                                                   
+ *  LP - pointer to the array [L_{n-1}, L_{n}]                                  
+ *
+ * */
 {
 
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     
     *(LP+0) = 1.0;
@@ -107,28 +108,28 @@ void CalcLP
 void find_Gauss_points
 ( 
     matlib_index n, 
-    double tol,   
-    double* zeros
+    matlib_real  tol,   
+    matlib_real* zeros
 )
-/******************************************************************************
- * Description: This function computes the zeros of the Legendre polnomial or *
- * Gauss points. The bracketing interval of the zeros are known to be         *
- * $x_j\in[-\cos((j-0.5)\pi/(n+1/2)), -\cos(j\pi/(n+1/2))]$.                  *
- *                                                                            *
- * Input(s) :                                                                 *
- *  n   - degree of Legendre polynomial                                       *
- *  tol - tolerance of error                                                  *
- *                                                                            *
- * Output(s):                                                                 *
- *  zeros - pointer to the array of Gauss-zeros                               *
- *                                                                            *
- ******************************************************************************/
+/* 
+ * Description: This function computes the zeros of the Legendre polnomial or 
+ * Gauss points. The bracketing interval of the zeros are known to be         
+ * $x_j\in[-\cos((j-0.5)\pi/(n+1/2)), -\cos(j\pi/(n+1/2))]$.                  
+ *                                                                            
+ * Input(s) :                                                                 
+ *  n   - degree of Legendre polynomial                                       
+ *  tol - tolerance of error                                                  
+ *                                                                            
+ * Output(s):                                                                 
+ *  zeros - pointer to the array of Gauss-zeros                               
+ *
+ * */
 {
-    double LP[2], x, e;
-    double tmp, LPa, xa, xb, xmid;
+    matlib_real LP[2], x, e;
+    matlib_real tmp, LPa, xa, xb, xmid;
     matlib_index i, j = 0;
-    double theta = M_PI/(n+0.5);
-    double C[n-1], D[n-1];
+    matlib_real theta = M_PI/(n+0.5);
+    matlib_real C[n-1], D[n-1];
     /* 
      * C and D are coefficients in the recurrence relation of the Legendre
      * polynomials
@@ -212,36 +213,36 @@ void find_Gauss_points
 void find_LGL_points
 ( 
     matlib_index n, 
-    double tol, 
-    double* zeros, 
-    double* quadW,
-    double *gzeros
+    matlib_real tol, 
+    matlib_real* zeros, 
+    matlib_real* quadW,
+    matlib_real *gzeros
 )
-/******************************************************************************
- * Description: This function finds the zeros of LGL polynomial defined as    *
- * $(1-x^2)L'_n$. The zeros are known as LGL-points. The Gauss zeros bracket  *
- * the LGL zeros. This information is provided in order to speed up the       *
- * computation. Newton's iterations is given by                               *           
- * $x_{k+1} = \frac{n}{n+1}x_k+\frac{L_{n-1}(x_k)}{(n+1)L_n(x_k)}$.           *
- *                                                                            *
- * Input(s) :                                                                 *
- *  n   - degree of Legendre polynomial                                       *
- *  tol - tolerance of error                                                  *
- *  gzeros - Gauss zeros                                                      *
- *                                                                            *
- * Output(s):                                                                 *
- *  zeros - LGL-points                                                        *
- *  quadW - quadrature weights for weight function $\omega(x)=1$.             *
- *  The weights are given by $\omega_j = \frac{2}{n(n+1)L_n^2(x_j)}$.         *
- *                                                                            *
- ******************************************************************************/
+/*
+ * Description: This function finds the zeros of LGL polynomial defined as    
+ * $(1-x^2)L'_n$. The zeros are known as LGL-points. The Gauss zeros bracket  
+ * the LGL zeros. This information is provided in order to speed up the       
+ * computation. Newton's iterations is given by                                          
+ * $x_{k+1} = \frac{n}{n+1}x_k+\frac{L_{n-1}(x_k)}{(n+1)L_n(x_k)}$.           
+ *                                                                            
+ * Input(s) :                                                                 
+ *  n   - degree of Legendre polynomial                                       
+ *  tol - tolerance of error                                                  
+ *  gzeros - Gauss zeros                                                      
+ *                                                                            
+ * Output(s):                                                                 
+ *  zeros - LGL-points                                                        
+ *  quadW - quadrature weights for weight function $\omega(x)=1$.             
+ *  The weights are given by $\omega_j = \frac{2}{n(n+1)L_n^2(x_j)}$.         
+ *
+ * */
 {
     debug_enter("degree of Legendre polynomials: %d", n);
-    double LP[2], x, e, tmp1;
-    double tmp, LGLa, xa, xb, xmid;
+    matlib_real LP[2], x, e, tmp1;
+    matlib_real tmp, LGLa, xa, xb, xmid;
     matlib_index i, j = 0;
-    double gamma;
-    double C[n-1], D[n-1];
+    matlib_real gamma;
+    matlib_real C[n-1], D[n-1];
 
     /* 
      * C and D are coefficients in the recurrence relation of the Legendre
@@ -292,7 +293,7 @@ void find_LGL_points
             }
             /* A combination of bisection and Newton method is used to find the
              * root. Newton's update is used to find new bracketing interval
-             * instead of the midpoint as in the pure bisection method.
+             * instead of the midpomatlib_index as in the pure bisection method.
              * */
             x = xmid;
             while(e>tol && j<1e4){
@@ -330,40 +331,23 @@ void find_LGL_points
     
     debug_exit("%s", "");
 }
-/*============================================================================*/
-/******************************************************************************
- *                                                                            *
- * Following subroutines use matrices stored in row major format.             * 
- *                                                                            *
- ******************************************************************************/
+/*============================================================================+/
+ | Following subroutines use matrices stored in row major format.
+/+============================================================================*/
 void backward_transform_matrix
 (
-    const matlib_index   P,            
-    const matlib_index   p,            
-    const double* x,          
-          double* pILTM
+    const matlib_index P,            
+    const matlib_index p,            
+    const matlib_real* x,          
+          matlib_real* pILTM
 )
-/******************************************************************************
- * Description: This function computes the inverse transformation matrix for  *
- * Legendre transforms with LGL points. Maximum degree of Legendre polynomial *
- * used for the interpolation is 'p'. The values of the transformed function  *
- * is computed at a set of points 'x'.                                        *
- *                                                                            *
- * Input(s) :                                                                 *
- *  P - size of x minus 1                                                     *
- *  p - maximum of the degree of Legendre polynomials used                    *
- *  x - pointer to the array of points where the interpolation polynomial is  *
- *  evaluated, length of the array is P+1                                     *
- *                                                                            *
- * Output(s):                                                                 *
- *  pILTM - is a pointer to an array pointing to the first row of ILTM matrix *
- *  which has the dimensions (P+1)-by-(p+1) stored in a row major format      *
- *  double ILTM[NUM_ROW][NUM_COL];                                            *
- *  double (*pILTM)[NUM_COL];                                                 *
- *  pILTM = ILTM[0]; Here pILTM points to the entire first row of the matrx.  *
- *  pILTM++; This advances the pointer to the next row of the matrix.         *
- *                                                                            *
- ******************************************************************************/
+/* 
+ * Description: This function computes the inverse transformation matrix for 
+ * Legendre transforms with LGL points. Maximum degree of Legendre polynomial
+ * used for the interpolation is 'p'. The values of the transformed function 
+ * is computed at a set of points 'x'.                                       
+ *
+ * */
 {
     
     debug_enter("degree of polynomial: %d, nr. sampling points: %d", p, P+1);
@@ -371,7 +355,7 @@ void backward_transform_matrix
     matlib_index i, j;
     /* ILTM: matrix in row major format */ 
     matlib_index stILTM = p+1;
-    double tmp1, tmp2;
+    matlib_real tmp1, tmp2;
     /* pILTM is a pointer to an array of length p+1, note that the paranthesis 
      * is necessary!
      * */ 
@@ -405,34 +389,34 @@ void backward_transform_matrix
 void forward_transform_matrix
 (                                                                 
     const matlib_index   p,            
-    const double* zeros,      
-          double* pFLTM
+    const matlib_real* zeros,      
+          matlib_real* pFLTM
 )
-/******************************************************************************
- * Description: This function computes the forward transformation matrix for  *
- * Legendre transforms with LGL points. Maximum degree of Legendre polynomial *
- * used for the interpolation is 'p'.                                         *
- *                                                                            *
- * Input(s) :                                                                 *
- *  p     - maximum of the degree of Legendre polynomials used                *    
- *  zeros - p+1 LGL points                                                    *
- *                                                                            *
- * Output(s):                                                                 *
- *  pFLTM - is a pointer to an array pointing to the first row of FLTM matrix *
- *  which has the dimensions (p+1)-by-(p+1) stored in a row major format.     *
- *                                                                            *
- ******************************************************************************/
+/* 
+ * Description: This function computes the forward transformation matrix for  
+ * Legendre transforms with LGL points. Maximum degree of Legendre polynomial 
+ * used for the interpolation is 'p'.                                         
+ *                                                                            
+ * Input(s) :                                                                 
+ *  p     - maximum of the degree of Legendre polynomials used                
+ *  zeros - p+1 LGL points                                                    
+ *                                                                            
+ * Output(s):                                                                 
+ *  pFLTM - is a pointer to an array pointing to the first row of FLTM matrix 
+ *  which has the dimensions (p+1)-by-(p+1) stored in a row major format.     
+ *
+ * */
 {
     debug_enter("degree of polynomial: %d", p);
 
     matlib_index i, j;
     
-    double LP[p+1], *pLP = &LP[0];
-    double C[p-1], D[p-1], *pC = &C[0], *pD = &D[0];
-    double E[p+1], *pE = &E[0];
+    matlib_real LP[p+1], *pLP = &LP[0];
+    matlib_real C[p-1], D[p-1], *pC = &C[0], *pD = &D[0];
+    matlib_real E[p+1], *pE = &E[0];
     bool s = (p>1);
 
-    double g = 1.0/(p*(p+1));
+    matlib_real g = 1.0/(p*(p+1));
     matlib_index stFLTM = (p+1);
 
     /* Fill the first column 
@@ -464,7 +448,7 @@ void forward_transform_matrix
 
     if(s)
     {
-        double tmp_zeros = 0;
+        matlib_real tmp_zeros = 0;
         *pLP = 1.0;
         pLP++;
         *pLP = *(zeros+1);
@@ -529,28 +513,28 @@ void forward_transform_matrix
 
 void forward_transform_matrix2
 (
-    const matlib_index   p,                        
-    const matlib_index   P,                        
-    const double* zeros,                  
-          double* pFLTM                   
+    const matlib_index p,                        
+    const matlib_index P,                        
+    const matlib_real* zeros,                  
+          matlib_real* pFLTM                   
 )
-/******************************************************************************
- * Description: This subroutine computes the transformation matrix for        *
- * Legendre transformation where the function is sampled on (P+1) LGL points  *
- * while the projection is onto a Legendre polynomial-space of degree p.      *
- *                                                                            *
- * Input(s) :                                                                 *
- *  p     - maximum of the degree of Legendre polynomials used for the final  *
- *  interpolation                                                             *
- *  P     - P+1 LGL points are used to sample the function, note that P would *
- *  be the highest degree of the Legendre polynomial involved                 *
- *  zeros - P+1 LGL points                                                    *
- *                                                                            *
- * Output(s):                                                                 *
- *  pFLTM - is a pointer to an array pointing to the first row of the matrix  *
- *  FLTM with dimensions (p+1)-by-(P+1). It is stored in a row major format.  *
- *                                                                            *
- ******************************************************************************/
+/* 
+ * Description: This subroutine computes the transformation matrix for        
+ * Legendre transformation where the function is sampled on (P+1) LGL points  
+ * while the projection is onto a Legendre polynomial-space of degree p.      
+ *                                                                            
+ * Input(s) :                                                                 
+ *  p     - maximum of the degree of Legendre polynomials used for the final  
+ *  interpolation                                                             
+ *  P     - P+1 LGL points are used to sample the function, note that P would 
+ *  be the highest degree of the Legendre polynomial involved                 
+ *  zeros - P+1 LGL points                                                    
+ *                                                                            
+ * Output(s):                                                                 
+ *  pFLTM - is a pointer to an array pointing to the first row of the matrix  
+ *  FLTM with dimensions (p+1)-by-(P+1). It is stored in a row major format.  
+ *
+ * */
 {
 
     debug_enter("degree of polynomial: %d, nr. LGL sampling points: %d", p, P+1);
@@ -574,12 +558,12 @@ void forward_transform_matrix2
     bool s  = (p<P);
     bool s1 = (P>1);
     
-    double LP[P+1], *pLP = &LP[0];
-    double C[P-1], D[P-1], *pC = &C[0], *pD = &D[0];
-    double E[p+1], *pE = &E[0];
+    matlib_real LP[P+1], *pLP = &LP[0];
+    matlib_real C[P-1], D[P-1], *pC = &C[0], *pD = &D[0];
+    matlib_real E[p+1], *pE = &E[0];
     matlib_index stFLTM = (P+1);
 
-    double g = 1.0/(P*(P+1.0));
+    matlib_real g = 1.0/(P*(P+1.0));
     
     /* Fill the first column
      * */ 
@@ -613,7 +597,7 @@ void forward_transform_matrix2
         (*(pFLTM+i*stFLTM+P)) = *pE*g;
         pE++;
     }
-    double tmp = 1.0/(P+1.0); 
+    matlib_real tmp = 1.0/(P+1.0); 
     if(s)
         (*(pFLTM+p*stFLTM+P)) = *pE*g;
     else
@@ -625,7 +609,7 @@ void forward_transform_matrix2
          * This part of the code generates the legendre polynomials.
          * All degree polynomials values are stored.
          * */
-        double tmp_zeros = 0;
+        matlib_real tmp_zeros = 0;
 
         *pLP = 1.0;
         pLP++;
@@ -700,42 +684,38 @@ void forward_transform_matrix2
     }
     debug_exit("%s","");
 }
-/*======================================================================*/
-/************************************************************************
- *                                                                      *
- * Column major version of the above functions for MATLAB               *
- *                                                                      *
- ************************************************************************/
-
+/*============================================================================+/
+ |Column major version of the above functions for MATLAB
+/+============================================================================*/
 void backward_transform_matrix_colmajor
 ( 
     matlib_index P, 
     matlib_index p, 
-    double *x, 
-    double *pILTM
+    matlib_real *x, 
+    matlib_real *pILTM
 )
-/******************************************************************************
- * Description: This function computes the inverse transformation matrix for  *
- * Legendre transforms with LGL points. Maximum degree of Legendre polynomial *
- * used for the interpolation is 'p'. The values of the transformed function  *
- * is computed at a set of points 'x'.                                        *
- *                                                                            *
- * Input(s) :                                                                 *
- *  P - size of x minus 1                                                     *
- *  p - maximum of the degree of Legendre polynomials used                    *
- *  x - pointer to the array of points where the interpolation polynomial is  *
- *  evaluated, length of the array is P+1                                     *
- *                                                                            *
- * Output(s):                                                                 *
- * pILTM: points to the first element of a (P+1)-by-(p+1) matrix stored       *
- * in a column major format                                                   *
- *                ILTM[i][j] = *(pILTM+i+j*col)                               *
- *                                                                            *
- ******************************************************************************/
+/*
+ * Description: This function computes the inverse transformation matrix for  
+ * Legendre transforms with LGL points. Maximum degree of Legendre polynomial 
+ * used for the interpolation is 'p'. The values of the transformed function  
+ * is computed at a set of points 'x'.                                        
+ *                                                                            
+ * Input(s) :                                                                 
+ *  P - size of x minus 1                                                     
+ *  p - maximum of the degree of Legendre polynomials used                    
+ *  x - pointer to the array of points where the interpolation polynomial is  
+ *  evaluated, length of the array is P+1                                     
+ *                                                                            
+ * Output(s):                                                                 
+ * pILTM: points to the first element of a (P+1)-by-(p+1) matrix stored       
+ * in a column major format                                                   
+ *                ILTM[i][j] = *(pILTM+i+j*col)                               
+ *                                                                            
+ * */
 {
 
     matlib_index i, j;
-    double tmp1, tmp2;
+    matlib_real tmp1, tmp2;
     bool s = (p>1);
     matlib_index col = P+1;
     matlib_index col1 = col;
@@ -774,33 +754,33 @@ void backward_transform_matrix_colmajor
 void forward_transform_matrix_colmajor
 ( 
     matlib_index p, 
-    double *zeros, 
-    double *pFLTM
+    matlib_real *zeros, 
+    matlib_real *pFLTM
 )
 
-/******************************************************************************
- * Description: This function computes the forward transformation matrix for  *
- * Legendre transforms with LGL points. Maximum degree of Legendre polynomial *
- * used for the interpolation is 'p'.                                         *
- *                                                                            *
- * Input(s) :                                                                 *
- *  p     - maximum of the degree of Legendre polynomials used                *    
- *  zeros - p+1 LGL points                                                    *
- *                                                                            *
- * Output(s):                                                                 *
- * pFLTM - pointer to the first element of FLTM                               *
- * FLTM is a (p+1)-by-(p+1) matrix stored in a column major format            *
- *                FLTM[i][j] = *(pFLTM+i+j*col)                               *
- *                                                                            *
- ******************************************************************************/
+/*
+ * Description: This function computes the forward transformation matrix for  
+ * Legendre transforms with LGL points. Maximum degree of Legendre polynomial 
+ * used for the interpolation is 'p'.                                         
+ *                                                                            
+ * Input(s) :                                                                 
+ *  p     - maximum of the degree of Legendre polynomials used                    
+ *  zeros - p+1 LGL points                                                    
+ *                                                                            
+ * Output(s):                                                                 
+ * pFLTM - pointer to the first element of FLTM                               
+ * FLTM is a (p+1)-by-(p+1) matrix stored in a column major format            
+ *                FLTM[i][j] = *(pFLTM+i+j*col)                               
+ *                                                                            
+ * */
 {
     matlib_index i, j;
-    double LP[p+1], *pLP = &LP[0];
-    double C[p-1], D[p-1], *pC = &C[0], *pD = &D[0];
-    double E[p+1], *pE = &E[0];
+    matlib_real LP[p+1], *pLP = &LP[0];
+    matlib_real C[p-1], D[p-1], *pC = &C[0], *pD = &D[0];
+    matlib_real E[p+1], *pE = &E[0];
     bool s = (p>1);
 
-    double g = 1.0/(p*(p+1));
+    matlib_real g = 1.0/(p*(p+1));
     
     /* Fill the first column */ 
     *(pFLTM+0) = g; 
@@ -831,7 +811,7 @@ void forward_transform_matrix_colmajor
 
     if(s)
     {
-        double tmp_zeros = 0;
+        matlib_real tmp_zeros = 0;
         col = p+1;
         *pLP = 1.0;
         pLP++;
@@ -897,29 +877,29 @@ void forward_transform_matrix_colmajor
 
 void forward_transform_matrix2_colmajor
 ( 
-    matlib_index p,                        /* maximum degree of polynomials    */
-    matlib_index P,                        /* LGL points used for sampling:P+1 */
-    double *zeros,                  /* (P+1) LGL points                 */
-    double *pFLTM                   /* (p+1)-by-(P+1) matrix, col. major*/
+    matlib_index p,                      
+    matlib_index P,                      
+    matlib_real  *zeros,                  
+    matlib_real  *pFLTM                   
 )
-/******************************************************************************
- * Description: This subroutine computes the transformation matrix for        *
- * Legendre transformation where the function is sampled on (P+1) LGL points  *
- * while the projection is onto a Legendre polynomial-space of degree p.      *
- *                                                                            *
- * Input(s) :                                                                 *
- *  p     - maximum of the degree of Legendre polynomials used for the final  *
- *  interpolation                                                             *
- *  P     - P+1 LGL points are used to sample the function, note that P would *
- *  be the highest degree of the Legendre polynomial involved                 *
- *  zeros - P+1 LGL points                                                    *
- *                                                                            *
- * Output(s):                                                                 *
- *  pFLTM - is a pointer to the first element of the matrix FLTM with         * 
- *  dimensions (p+1)-by-(P+1). It is stored in a column major format.         *
- *                FLTM[i][j] = *(pFLTM+i+j*col)                               *
- *                                                                            *
- ******************************************************************************/
+/* 
+ * Description: This subroutine computes the transformation matrix for        
+ * Legendre transformation where the function is sampled on (P+1) LGL points  
+ * while the projection is onto a Legendre polynomial-space of degree p.      
+ *                                                                            
+ * Input(s) :                                                                 
+ *  p     - maximum of the degree of Legendre polynomials used for the final  
+ *  interpolation                                                             
+ *  P     - P+1 LGL points are used to sample the function, note that P would 
+ *  be the highest degree of the Legendre polynomial involved                 
+ *  zeros - P+1 LGL points                                                    
+ *                                                                            
+ * Output(s):                                                                 
+ *  pFLTM - is a pointer to the first element of the matrix FLTM with         
+ *  dimensions (p+1)-by-(P+1). It is stored in a column major format.         
+ *                FLTM[i][j] = *(pFLTM+i+j*col)                               
+ *                                                                            
+ * */
 {
 
     matlib_index i, j;
@@ -931,11 +911,11 @@ void forward_transform_matrix2_colmajor
     bool s  = (p<P);
     bool s1 = (P>1);
 
-    double LP[P+1], *pLP = &LP[0];
-    double C[P-1], D[P-1], *pC = &C[0], *pD = &D[0];
-    double E[p+1], *pE = &E[0];
+    matlib_real LP[P+1], *pLP = &LP[0];
+    matlib_real C[P-1], D[P-1], *pC = &C[0], *pD = &D[0];
+    matlib_real E[p+1], *pE = &E[0];
 
-    double g = 1.0/(P*(P+1));
+    matlib_real g = 1.0/(P*(P+1));
     /* Fill the first column  */ 
     *(pFLTM+0) = g; 
     *pE = 1.0;
@@ -968,7 +948,7 @@ void forward_transform_matrix2_colmajor
         col++;
         pE++;
     }
-    double tmp = 1.0/(P+1);
+    matlib_real tmp = 1.0/(P+1);
     if (s)
         *(pFLTM+col) = *pE*g;
     else
@@ -977,7 +957,7 @@ void forward_transform_matrix2_colmajor
     
     if(s1)
     {
-        double tmp_zeros = 0;
+        matlib_real tmp_zeros = 0;
         col = p+1;
         *pLP = 1.0;
         pLP++;
@@ -1056,10 +1036,10 @@ void forward_transform_matrix2_colmajor
 
 void legendre_LGLdataLT1
 ( 
-    const matlib_index      p, 
-    const double     tol,
-          matlib_dv* zeros,
-          matlib_dv* quadW
+    const matlib_index p, 
+    const matlib_real  tol,
+          matlib_xv*   zeros,
+          matlib_xv*   quadW
 )
 /* 
  * zeros  - array of length p+1 containing LGL-points
@@ -1070,11 +1050,11 @@ void legendre_LGLdataLT1
     debug_enter("degree of polynomial: %d, tolerance: %0.16g", p, tol);
     
     matlib_index i;
-    double gzeros[p];
+    matlib_real gzeros[p];
     matlib_index nr_LGL = p+1;
 
-    matlib_create_dv(nr_LGL, zeros, MATLIB_COL_VECT);
-    matlib_create_dv(nr_LGL, quadW, MATLIB_COL_VECT);
+    matlib_create_xv(nr_LGL, zeros, MATLIB_COL_VECT);
+    matlib_create_xv(nr_LGL, quadW, MATLIB_COL_VECT);
 
 
     find_Gauss_points( p, tol, gzeros);
@@ -1095,11 +1075,11 @@ void legendre_LGLdataLT1
 void legendre_LGLdataLT2
 ( 
     const matlib_index      p, 
-    const double     tol,
-          matlib_dv* zeros,
-          matlib_dv* quadW,
-          matlib_dm* FM,
-          matlib_dm* IM
+    const matlib_real     tol,
+          matlib_xv* zeros,
+          matlib_xv* quadW,
+          matlib_xm* FM,
+          matlib_xm* IM
 )
 /* 
  * zeros  - array of length p+1 containing LGL-points
@@ -1112,14 +1092,14 @@ void legendre_LGLdataLT2
     debug_enter("degree of polynomial: %d, tolerance: %0.16g", p, tol);
     
     matlib_index i;
-    double gzeros[p];
+    matlib_real gzeros[p];
     matlib_index nr_LGL = p+1;
     
-    matlib_create_dm(nr_LGL, nr_LGL, FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);
-    matlib_create_dm(nr_LGL, nr_LGL, IM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);
+    matlib_create_xm(nr_LGL, nr_LGL, FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);
+    matlib_create_xm(nr_LGL, nr_LGL, IM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);
 
-    matlib_create_dv(nr_LGL, zeros, MATLIB_COL_VECT);
-    matlib_create_dv(nr_LGL, quadW, MATLIB_COL_VECT);
+    matlib_create_xv(nr_LGL, zeros, MATLIB_COL_VECT);
+    matlib_create_xv(nr_LGL, quadW, MATLIB_COL_VECT);
 
 
     find_Gauss_points( p, tol, gzeros);
@@ -1143,8 +1123,8 @@ void legendre_LGLdataLT2
 
 void legendre_LGLdataFM
 ( 
-    const matlib_dv xi,
-          matlib_dm FM
+    const matlib_xv xi,
+          matlib_xm FM
 )
 /* 
  * FM: Forward transform matrix 
@@ -1192,8 +1172,8 @@ void legendre_LGLdataFM
 
 void legendre_LGLdataIM
 ( 
-    const matlib_dv xi,
-          matlib_dm IM
+    const matlib_xv xi,
+          matlib_xm IM
 )
 /* 
  * IM: inverse transform matrix

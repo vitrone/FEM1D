@@ -37,20 +37,20 @@ void mexFunction
     matlib_index N = (matlib_index)mxGetScalar(prhs[1]);
     
     matlib_index dim = N*(p+1);
-    matlib_dv ur = { .len = dim, 
+    matlib_xv ur = { .len = dim, 
                      .elem_p = mxGetPr(prhs[2]),
                      .type   = MATLIB_COL_VECT };
 
     double rnorm2, inorm2 = 0;
-    rnorm2 = fem1d_DNorm2(p, N, ur);
+    rnorm2 = fem1d_XNorm2(p, N, ur);
 
     if(mxIsComplex(prhs[2]))
     {
 
-        matlib_dv ui = { .len = dim, 
+        matlib_xv ui = { .len = dim, 
                          .elem_p = mxGetPi(prhs[2]),
                          .type   = MATLIB_COL_VECT };
-        inorm2 = fem1d_DNorm2(p, N, ui);
+        inorm2 = fem1d_XNorm2(p, N, ui);
     }
     plhs[0] = mxCreateDoubleScalar(sqrt(rnorm2*rnorm2 + inorm2*inorm2));
 }

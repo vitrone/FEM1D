@@ -156,9 +156,9 @@ static void* pfem1d_thfunc_DFLT(void* mp)
 
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm FM   =    *((matlib_dm*) (ptr->shared_data[1]));
-    matlib_dv u    =    *((matlib_dv*) (ptr->shared_data[2]));
-    matlib_dv U    =    *((matlib_dv*) (ptr->shared_data[3]));
+    matlib_xm FM   =    *((matlib_xm*) (ptr->shared_data[1]));
+    matlib_xv u    =    *((matlib_xv*) (ptr->shared_data[2]));
+    matlib_xv U    =    *((matlib_xv*) (ptr->shared_data[3]));
     
     debug_enter( "thread index: %d, "
                  "nr. finite-elements: %d, "
@@ -197,7 +197,7 @@ static void* pfem1d_thfunc_DFLT(void* mp)
             _CBLAS_ORDER order_enum;
             GET_CBLASORDER_AND_STRIDE(order_enum, strideFM, FM);
 
-            double one = 1.0, zero = 0;
+            matlib_real one = 1.0, zero = 0;
             matlib_index incu = 1;
             matlib_index i;
 
@@ -236,12 +236,12 @@ static void* pfem1d_thfunc_DFLT(void* mp)
     debug_exit("Thread id: %d", ptr->thread_index);
 }
 
-void pfem1d_DFLT
+void pfem1d_XFLT
 (
     const matlib_index    N,
-    const matlib_dm       FM,
-          matlib_dv       u,
-          matlib_dv       U,
+    const matlib_xm       FM,
+          matlib_xv       u,
+          matlib_xv       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 )
@@ -300,7 +300,7 @@ static void* pfem1d_thfunc_ZFLT(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm FM   =    *((matlib_dm*) (ptr->shared_data[1]));
+    matlib_xm FM   =    *((matlib_xm*) (ptr->shared_data[1]));
     matlib_zv u    =    *((matlib_zv*) (ptr->shared_data[2]));
     matlib_zv U    =    *((matlib_zv*) (ptr->shared_data[3]));
 
@@ -339,7 +339,7 @@ static void* pfem1d_thfunc_ZFLT(void* mp)
             _CBLAS_ORDER order_enum;
             GET_CBLASORDER_AND_STRIDE(order_enum, strideFM, FM);
 
-            double one = 1.0, zero = 0;
+            matlib_real one = 1.0, zero = 0;
             matlib_index incu = 2;
             matlib_index i;
 
@@ -354,10 +354,10 @@ static void* pfem1d_thfunc_ZFLT(void* mp)
                              one, 
                              FM.elem_p, 
                              strideFM, 
-                             (double*)u.elem_p,
+                             (matlib_real*)u.elem_p,
                              incu,
                              zero, 
-                             (double*)U.elem_p, 
+                             (matlib_real*)U.elem_p, 
                              incu);
                 cblas_dgemv( order_enum, 
                              CblasNoTrans, 
@@ -366,10 +366,10 @@ static void* pfem1d_thfunc_ZFLT(void* mp)
                              one, 
                              FM.elem_p, 
                              strideFM, 
-                             ((double*)u.elem_p+1),
+                             ((matlib_real*)u.elem_p+1),
                              incu,
                              zero, 
-                             ((double*)U.elem_p+1), 
+                             ((matlib_real*)U.elem_p+1), 
                              incu);
                 (u.elem_p) += P;
                 (U.elem_p) += (FM.lenc);
@@ -393,7 +393,7 @@ static void* pfem1d_thfunc_ZFLT(void* mp)
 void pfem1d_ZFLT
 (
     const matlib_index    N,
-    const matlib_dm       FM,
+    const matlib_xm       FM,
           matlib_zv       u,
           matlib_zv       U,
           matlib_index    num_threads,
@@ -454,9 +454,9 @@ static void* pfem1d_thfunc_DILT(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm IM   = *((matlib_dm*) (ptr->shared_data[1]));
-    matlib_dv U    = *((matlib_dv*) (ptr->shared_data[2]));
-    matlib_dv u    = *((matlib_dv*) (ptr->shared_data[3]));
+    matlib_xm IM   = *((matlib_xm*) (ptr->shared_data[1]));
+    matlib_xv U    = *((matlib_xv*) (ptr->shared_data[2]));
+    matlib_xv u    = *((matlib_xv*) (ptr->shared_data[3]));
     
     pthread_mutex_t* lock_common = ((pthread_mutex_t*) (ptr->shared_data[4]));
     
@@ -524,7 +524,7 @@ static void* pfem1d_thfunc_DILT(void* mp)
                          incu);
             if(not_first)
             {
-                double* common_u = (double*) (ptr->nonshared_data[1]);
+                matlib_real* common_u = (matlib_real*) (ptr->nonshared_data[1]);
                 *common_u = *(u.elem_p);
                 pthread_mutex_unlock(&lock_common[ptr->thread_index-1]);
             }
@@ -582,12 +582,12 @@ static void* pfem1d_thfunc_DILT(void* mp)
     }
     debug_exit("Thread id: %d", ptr->thread_index);
 }
-void pfem1d_DILT
+void pfem1d_XILT
 (
     const matlib_index    N,
-    const matlib_dm       IM,
-          matlib_dv       U,
-          matlib_dv       u,
+    const matlib_xm       IM,
+          matlib_xv       U,
+          matlib_xv       u,
           matlib_index    num_threads,
           pthpool_data_t* mp
 )
@@ -607,7 +607,7 @@ void pfem1d_DILT
                              (void*) &u,
                              (void*) &(lock_common)};
     void* nonshared_data[num_threads][2];
-    double common_u[num_threads-1];
+    matlib_real common_u[num_threads-1];
 
     matlib_index nsdata[num_threads][2];
 
@@ -686,7 +686,7 @@ static void* pfem1d_thfunc_ZILT(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm IM   =    *((matlib_dm*) (ptr->shared_data[1]));
+    matlib_xm IM   =    *((matlib_xm*) (ptr->shared_data[1]));
     matlib_zv U    =    *((matlib_zv*) (ptr->shared_data[2]));
     matlib_zv u    =    *((matlib_zv*) (ptr->shared_data[3]));
     
@@ -745,10 +745,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                          1.0, 
                          IM.elem_p, 
                          strideIM, 
-                         (double*)U.elem_p, 
+                         (matlib_real*)U.elem_p, 
                          incu, 
                          0,
-                         (double*)u.elem_p,
+                         (matlib_real*)u.elem_p,
                          incu);
             cblas_dgemv( order_enum, 
                          CblasNoTrans, 
@@ -757,10 +757,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                          1.0, 
                          IM.elem_p, 
                          strideIM, 
-                         ((double*)U.elem_p+1), 
+                         ((matlib_real*)U.elem_p+1), 
                          incu, 
                          0,
-                         ((double*)u.elem_p+1),
+                         ((matlib_real*)u.elem_p+1),
                          incu);
             if(not_first)
             {
@@ -779,10 +779,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                              1.0, 
                              IM.elem_p, 
                              strideIM, 
-                             (double*)U.elem_p, 
+                             (matlib_real*)U.elem_p, 
                              incu, 
                              0,
-                             (double*)u.elem_p,
+                             (matlib_real*)u.elem_p,
                              incu);
                 cblas_dgemv( order_enum, 
                              CblasNoTrans, 
@@ -791,10 +791,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                              1.0, 
                              IM.elem_p, 
                              strideIM, 
-                             ((double*)U.elem_p+1), 
+                             ((matlib_real*)U.elem_p+1), 
                              incu, 
                              0,
-                             ((double*)u.elem_p+1),
+                             ((matlib_real*)u.elem_p+1),
                              incu);
                 (U.elem_p) += (IM.lenr);
                 (u.elem_p) += P;
@@ -810,10 +810,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                          1.0, 
                          IM.elem_p, 
                          strideIM, 
-                         (double*)U.elem_p, 
+                         (matlib_real*)U.elem_p, 
                          incu, 
                          0,
-                         (double*)u.elem_p,
+                         (matlib_real*)u.elem_p,
                          incu);
             cblas_dgemv( order_enum, 
                          CblasNoTrans, 
@@ -822,10 +822,10 @@ static void* pfem1d_thfunc_ZILT(void* mp)
                          1.0, 
                          IM.elem_p, 
                          strideIM, 
-                         ((double*)U.elem_p+1), 
+                         ((matlib_real*)U.elem_p+1), 
                          incu, 
                          0,
-                         ((double*)u.elem_p+1),
+                         ((matlib_real*)u.elem_p+1),
                          incu);
             if(not_last)
             {
@@ -849,7 +849,7 @@ static void* pfem1d_thfunc_ZILT(void* mp)
 void pfem1d_ZILT
 (
     const matlib_index    N,
-    const matlib_dm       IM,
+    const matlib_xm       IM,
           matlib_zv       U,
           matlib_zv       u,
           matlib_index    num_threads,
@@ -950,9 +950,9 @@ static void* pfem1d_thfunc_DFLT2(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm FM   =    *((matlib_dm*) (ptr->shared_data[1]));
-    matlib_dm u    =    *((matlib_dm*) (ptr->shared_data[2]));
-    matlib_dm U    =    *((matlib_dm*) (ptr->shared_data[3]));
+    matlib_xm FM   =    *((matlib_xm*) (ptr->shared_data[1]));
+    matlib_xm u    =    *((matlib_xm*) (ptr->shared_data[2]));
+    matlib_xm U    =    *((matlib_xm*) (ptr->shared_data[3]));
 
     debug_enter( "Thread index: %d, "
                  "nr. finite-elements: %d, matrices FM: %d-by-%d, "
@@ -1051,12 +1051,12 @@ static void* pfem1d_thfunc_DFLT2(void* mp)
     debug_exit("%s","");
 }
 
-void pfem1d_DFLT2
+void pfem1d_XFLT2
 (
     const matlib_index    N,
-    const matlib_dm       FM,
-          matlib_dm       u,
-          matlib_dm       U,
+    const matlib_xm       FM,
+          matlib_xm       u,
+          matlib_xm       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 )
@@ -1115,7 +1115,7 @@ static void* pfem1d_thfunc_ZFLT2(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
     matlib_index N = *((matlib_index*) (ptr->shared_data[0]));
-    matlib_dm FM   =    *((matlib_dm*) (ptr->shared_data[1]));
+    matlib_xm FM   =    *((matlib_xm*) (ptr->shared_data[1]));
     matlib_zm u    =    *((matlib_zm*) (ptr->shared_data[2]));
     matlib_zm U    =    *((matlib_zm*) (ptr->shared_data[3]));
     debug_enter( "nr. finite-elements: %d, matrices FM: %d-by-%d, "
@@ -1185,10 +1185,10 @@ static void* pfem1d_thfunc_ZFLT2(void* mp)
                                  1.0, 
                                  FM.elem_p, 
                                  strideFM,
-                                 (double*)u.elem_p, 
+                                 (matlib_real*)u.elem_p, 
                                  incu, 
                                  0, 
-                                 (double*)U.elem_p, 
+                                 (matlib_real*)U.elem_p, 
                                  incU);
                     cblas_dgemv( order_enum, 
                                  CblasNoTrans, 
@@ -1197,10 +1197,10 @@ static void* pfem1d_thfunc_ZFLT2(void* mp)
                                  1.0, 
                                  FM.elem_p, 
                                  strideFM,
-                                 (double*)u.elem_p+1, 
+                                 (matlib_real*)u.elem_p+1, 
                                  incu, 
                                  0, 
-                                 (double*)U.elem_p+1, 
+                                 (matlib_real*)U.elem_p+1, 
                                  incU);
 
                     (u.elem_p) += P;
@@ -1229,7 +1229,7 @@ static void* pfem1d_thfunc_ZFLT2(void* mp)
 void pfem1d_ZFLT2
 (
     const matlib_index    N,
-    const matlib_dm       FM,
+    const matlib_xm       FM,
           matlib_zm       u,
           matlib_zm       U,
           matlib_index    num_threads,
@@ -1299,12 +1299,12 @@ static void* thfunc_dshapefunc2lp(void* mp)
 
     matlib_index p = *(matlib_index*) (ptr->shared_data[0]);
 
-    double *v = (double*) (ptr->shared_data[1]);
-    double *b = (double*) (ptr->shared_data[2]);
-    double *u = (double*) (ptr->shared_data[3]);
-    double *B = (double*) (ptr->shared_data[5]);
-    double *C = (double*) (ptr->shared_data[4]);
-    double *A = (double*) (ptr->shared_data[6]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[2]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[3]);
+    matlib_real *B = (matlib_real*) (ptr->shared_data[5]);
+    matlib_real *C = (matlib_real*) (ptr->shared_data[4]);
+    matlib_real *A = (matlib_real*) (ptr->shared_data[6]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1322,8 +1322,8 @@ static void* thfunc_dshapefunc2lp(void* mp)
         *u = 0.5*( *(v-1) + *v)+A[0]**b    ; u++;
         *u = 0.5*(-*(v-1) + *v)+A[1]**(b+1); u++;
 
-        //pB = (double*) (ptr->shared_data[5]);
-        //pC = (double*) (ptr->shared_data[6]);
+        //pB = (matlib_real*) (ptr->shared_data[5]);
+        //pC = (matlib_real*) (ptr->shared_data[6]);
         *u = B[0]**b + C[0]**(b+2); b++, u++;
         *u = B[1]**b + C[1]**(b+2); b++, u++;
         *u = B[2]**b + C[2]**(b+2); b++, u++;
@@ -1342,11 +1342,11 @@ static void* thfunc_dshapefunc2lp(void* mp)
     debug_exit("%s", "");
 }
  
-void pfem1d_DF2L
+void pfem1d_XF2L
 (
     const matlib_index    p, 
-    const matlib_dv       vb,
-          matlib_dv       u,
+    const matlib_xv       vb,
+          matlib_xv       u,
           matlib_index    num_threads,
           pthpool_data_t* mp
 )
@@ -1389,11 +1389,11 @@ void pfem1d_DF2L
         {
 
             /* define the shared data */ 
-            double A[4];
+            matlib_real A[4];
 
-            matlib_dv B, C;
-            matlib_create_dv(p-3, &B, MATLIB_COL_VECT);
-            matlib_create_dv(p-3, &C, MATLIB_COL_VECT);
+            matlib_xv B, C;
+            matlib_create_xv(p-3, &B, MATLIB_COL_VECT);
+            matlib_create_xv(p-3, &C, MATLIB_COL_VECT);
             
             A[0] = -1.0/sqrt(6);
             A[1] = -1.0/sqrt(10);
@@ -1507,8 +1507,8 @@ static void* thfunc_zshapefunc2lp(void* mp)
     matlib_complex *v = (matlib_complex*) (ptr->shared_data[1]);
     matlib_complex *b = (matlib_complex*) (ptr->shared_data[2]);
     matlib_complex *u = (matlib_complex*) (ptr->shared_data[3]);
-    double *A = (double*) (ptr->shared_data[4]);
-    double *pB, *pC;
+    matlib_real *A = (matlib_real*) (ptr->shared_data[4]);
+    matlib_real *pB, *pC;
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1526,8 +1526,8 @@ static void* thfunc_zshapefunc2lp(void* mp)
         *u = 0.5*( *(v-1) + *v)+A[0]**b    ; u++;
         *u = 0.5*(-*(v-1) + *v)+A[1]**(b+1); u++;
 
-        pB = (double*) (ptr->shared_data[5]);
-        pC = (double*) (ptr->shared_data[6]);
+        pB = (matlib_real*) (ptr->shared_data[5]);
+        pC = (matlib_real*) (ptr->shared_data[6]);
         *u = *pB**b + *pC**(b+2); pB++, pC++, b++, u++;
         *u = *pB**b + *pC**(b+2); pB++, pC++, b++, u++;
         *u = *pB**b + *pC**(b+2); pB++, pC++, b++, u++;
@@ -1538,7 +1538,7 @@ static void* thfunc_zshapefunc2lp(void* mp)
 
         for 
         (
-            ; (pB < (double*) (ptr->shared_data[5]) + (p-3));
+            ; (pB < (matlib_real*) (ptr->shared_data[5]) + (p-3));
             pB++, pC++, b++, u++
         )
         {
@@ -1596,11 +1596,11 @@ void pfem1d_ZF2L
         {
 
             /* define the shared data */ 
-            double A[4];
+            matlib_real A[4];
 
-            matlib_dv B, C;
-            matlib_create_dv(p-3, &B, MATLIB_COL_VECT);
-            matlib_create_dv(p-3, &C, MATLIB_COL_VECT);
+            matlib_xv B, C;
+            matlib_create_xv(p-3, &B, MATLIB_COL_VECT);
+            matlib_create_xv(p-3, &C, MATLIB_COL_VECT);
             
             A[0] = -1.0/sqrt(6);
             A[1] = -1.0/sqrt(10);
@@ -1703,7 +1703,7 @@ void pfem1d_ZF2L
  | Unrolled version 
 /+============================================================================*/
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_2(void* mp)
 {
@@ -1711,9 +1711,9 @@ static void* thfunc_dshapefunc2lp_2(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1734,9 +1734,9 @@ static void* thfunc_dshapefunc2lp_2(void* mp)
         *u = _A03**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_3(void* mp)
 {
@@ -1744,9 +1744,9 @@ static void* thfunc_dshapefunc2lp_3(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1768,9 +1768,9 @@ static void* thfunc_dshapefunc2lp_3(void* mp)
         *u = _A04**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_4(void* mp)
 {
@@ -1778,9 +1778,9 @@ static void* thfunc_dshapefunc2lp_4(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1803,9 +1803,9 @@ static void* thfunc_dshapefunc2lp_4(void* mp)
         *u = _A05**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_5(void* mp)
 {
@@ -1813,9 +1813,9 @@ static void* thfunc_dshapefunc2lp_5(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1839,9 +1839,9 @@ static void* thfunc_dshapefunc2lp_5(void* mp)
         *u = _A06**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_6(void* mp)
 {
@@ -1849,9 +1849,9 @@ static void* thfunc_dshapefunc2lp_6(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1876,9 +1876,9 @@ static void* thfunc_dshapefunc2lp_6(void* mp)
         *u = _A07**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_7(void* mp)
 {
@@ -1886,9 +1886,9 @@ static void* thfunc_dshapefunc2lp_7(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1914,9 +1914,9 @@ static void* thfunc_dshapefunc2lp_7(void* mp)
         *u = _A08**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_8(void* mp)
 {
@@ -1924,9 +1924,9 @@ static void* thfunc_dshapefunc2lp_8(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1953,9 +1953,9 @@ static void* thfunc_dshapefunc2lp_8(void* mp)
         *u = _A09**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_9(void* mp)
 {
@@ -1963,9 +1963,9 @@ static void* thfunc_dshapefunc2lp_9(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -1993,9 +1993,9 @@ static void* thfunc_dshapefunc2lp_9(void* mp)
         *u = _A10**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dshapefunc2lp_10(void* mp)
 {
@@ -2003,9 +2003,9 @@ static void* thfunc_dshapefunc2lp_10(void* mp)
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *v = (double*) (ptr->shared_data[0]);
-    double *b = (double*) (ptr->shared_data[1]);
-    double *u = (double*) (ptr->shared_data[2]);
+    matlib_real *v = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *b = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *u = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -2034,11 +2034,11 @@ static void* thfunc_dshapefunc2lp_10(void* mp)
         *u = _A11**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
 /* COMPLEX VERSION */ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_2(void* mp)
 {
@@ -2069,9 +2069,9 @@ static void* thfunc_zshapefunc2lp_2(void* mp)
         *u = _A03**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_3(void* mp)
 {
@@ -2103,9 +2103,9 @@ static void* thfunc_zshapefunc2lp_3(void* mp)
         *u = _A04**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_4(void* mp)
 {
@@ -2138,9 +2138,9 @@ static void* thfunc_zshapefunc2lp_4(void* mp)
         *u = _A05**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_5(void* mp)
 {
@@ -2174,9 +2174,9 @@ static void* thfunc_zshapefunc2lp_5(void* mp)
         *u = _A06**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_6(void* mp)
 {
@@ -2211,9 +2211,9 @@ static void* thfunc_zshapefunc2lp_6(void* mp)
         *u = _A07**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_7(void* mp)
 {
@@ -2249,9 +2249,9 @@ static void* thfunc_zshapefunc2lp_7(void* mp)
         *u = _A08**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_8(void* mp)
 {
@@ -2288,9 +2288,9 @@ static void* thfunc_zshapefunc2lp_8(void* mp)
         *u = _A09**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_9(void* mp)
 {
@@ -2328,9 +2328,9 @@ static void* thfunc_zshapefunc2lp_9(void* mp)
         *u = _A10**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zshapefunc2lp_10(void* mp)
 {
@@ -2369,7 +2369,7 @@ static void* thfunc_zshapefunc2lp_10(void* mp)
         *u = _A11**b, u++, b++;
     }
 }
-/*** End of subroutine ***/
+ 
 
 /*============================================================================+/
  | Projection from LP basis representation to FEM-basis
@@ -2388,18 +2388,18 @@ static void* thfunc_dprjLP2FEM_ShapeFunc(void* mp)
 
     matlib_index p = *(matlib_index*) (ptr->shared_data[0]);
 
-    double *u  = (double*) (ptr->shared_data[1]);
-    double *Pv = (double*) (ptr->shared_data[2]);
-    double *Pb = (double*) (ptr->shared_data[3]);
-    double *B  = (double*) (ptr->shared_data[4]);
-    double *C  = (double*) (ptr->shared_data[5]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[2]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[3]);
+    matlib_real *B  = (matlib_real*) (ptr->shared_data[4]);
+    matlib_real *C  = (matlib_real*) (ptr->shared_data[5]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += ((p+1) * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += ((p-1) * start_end_index[0]);
@@ -2437,11 +2437,11 @@ static void* thfunc_dprjLP2FEM_ShapeFunc(void* mp)
 
 }
 
-void pfem1d_DPrjL2F
+void pfem1d_XPrjL2F
 (
     matlib_index    p,
-    matlib_dv       u,
-    matlib_dv       Pvb,
+    matlib_xv       u,
+    matlib_xv       Pvb,
     matlib_index    num_threads,
     pthpool_data_t* mp
 )
@@ -2477,13 +2477,13 @@ void pfem1d_DPrjL2F
 
         /* define the block of data per thread */ 
         matlib_index Np = N/(num_threads);
-        double tmp = 0;
+        matlib_real tmp = 0;
 
         if(p>10)
         {
-            matlib_dv B, C;
-            matlib_create_dv(p-1, &B, MATLIB_COL_VECT);
-            matlib_create_dv(p-1, &C, MATLIB_COL_VECT);
+            matlib_xv B, C;
+            matlib_create_xv(p-1, &B, MATLIB_COL_VECT);
+            matlib_create_xv(p-1, &C, MATLIB_COL_VECT);
             
             for(i=0; i<p-1; i++)
             {
@@ -2596,8 +2596,8 @@ static void* thfunc_zprjLP2FEM_ShapeFunc(void* mp)
     matlib_complex *u  = (matlib_complex*) (ptr->shared_data[1]);
     matlib_complex *Pv = (matlib_complex*) (ptr->shared_data[2]);
     matlib_complex *Pb = (matlib_complex*) (ptr->shared_data[3]);
-    double *B  = (double*) (ptr->shared_data[4]);
-    double *C  = (double*) (ptr->shared_data[5]);
+    matlib_real *B  = (matlib_real*) (ptr->shared_data[4]);
+    matlib_real *C  = (matlib_real*) (ptr->shared_data[5]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
@@ -2682,13 +2682,13 @@ void pfem1d_ZPrjL2F
 
         /* define the block of data per thread */ 
         matlib_index Np = N/(num_threads);
-        double tmp = 0;
+        matlib_real tmp = 0;
 
         if(p>10)
         {
-            matlib_dv B, C;
-            matlib_create_dv(p-1, &B, MATLIB_COL_VECT);
-            matlib_create_dv(p-1, &C, MATLIB_COL_VECT);
+            matlib_xv B, C;
+            matlib_create_xv(p-1, &B, MATLIB_COL_VECT);
+            matlib_create_xv(p-1, &C, MATLIB_COL_VECT);
             
             for(i=0; i<p-1; i++)
             {
@@ -2786,23 +2786,23 @@ void pfem1d_ZPrjL2F
 }
 /*============================================================================*/
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_2(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (3 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (start_end_index[0]);
@@ -2823,25 +2823,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_2(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_3(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (4 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (2 * start_end_index[0]);
@@ -2863,25 +2863,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_3(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_4(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (5 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (3 * start_end_index[0]);
@@ -2904,25 +2904,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_4(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_5(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u  += (6 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (4 * start_end_index[0]);
@@ -2946,25 +2946,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_5(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_6(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (7 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (5 * start_end_index[0]);
@@ -2989,25 +2989,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_6(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_7(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (8 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (6 * start_end_index[0]);
@@ -3032,25 +3032,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_7(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_8(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (9 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (7 * start_end_index[0]);
@@ -3076,25 +3076,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_8(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_9(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     u += (10 * start_end_index[0]);
     Pv += start_end_index[0];
     Pb += (8 * start_end_index[0]);
@@ -3121,25 +3121,25 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_9(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_dprjLP2FEM_ShapeFunc_10(void* mp)
 {
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u  = (double*) (ptr->shared_data[0]);
-    double *Pv = (double*) (ptr->shared_data[1]);
-    double *Pb = (double*) (ptr->shared_data[2]);
+    matlib_real *u  = (matlib_real*) (ptr->shared_data[0]);
+    matlib_real *Pv = (matlib_real*) (ptr->shared_data[1]);
+    matlib_real *Pb = (matlib_real*) (ptr->shared_data[2]);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double tmp;
+    matlib_real tmp;
     
     u += (11 * start_end_index[0]);
     Pv += start_end_index[0];
@@ -3170,11 +3170,11 @@ static void* thfunc_dprjLP2FEM_ShapeFunc_10(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
 /* COMPLEX VERSION */ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_2(void* mp)
 {
@@ -3212,9 +3212,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_2(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_3(void* mp)
 {
@@ -3253,9 +3253,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_3(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_4(void* mp)
 {
@@ -3295,9 +3295,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_4(void* mp)
 
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_5(void* mp)
 {
@@ -3338,9 +3338,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_5(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_6(void* mp)
 {
@@ -3382,9 +3382,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_6(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_7(void* mp)
 {
@@ -3426,9 +3426,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_7(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_8(void* mp)
 {
@@ -3471,9 +3471,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_8(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_9(void* mp)
 {
@@ -3517,9 +3517,9 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_9(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 
-/*** Begin Subroutine ***/
+ 
 
 static void* thfunc_zprjLP2FEM_ShapeFunc_10(void* mp)
 {
@@ -3566,7 +3566,7 @@ static void* thfunc_zprjLP2FEM_ShapeFunc_10(void* mp)
         u += 2;
     }
 }
-/*** End of subroutine ***/
+ 
 /*============================================================================+/
  | Norm using Parseval's theorem
 /+============================================================================*/
@@ -3574,8 +3574,8 @@ static void* thfunc_dlp_snorm2_d(void* mp)
 {
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data[0]);
-    matlib_dv A = *(matlib_dv*) (ptr->shared_data[1]);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data[0]);
+    matlib_xv A = *(matlib_xv*) (ptr->shared_data[1]);
 
     matlib_index i, j;
 
@@ -3584,7 +3584,7 @@ static void* thfunc_dlp_snorm2_d(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (A.len * start_end_index[0]);
 
     *snorm = 0;
@@ -3609,11 +3609,11 @@ static void* thfunc_dlp_snorm2_d(void* mp)
     debug_exit("Thread id: %d, snorm2: %0.16f", ptr->thread_index, *snorm);
 }
 
-double pfem1d_DNorm2
+matlib_real pfem1d_XNorm2
 (
     matlib_index    p,
     matlib_index    N,
-    matlib_dv       u,
+    matlib_xv       u,
     matlib_index    num_threads,
     pthpool_data_t* mp
 )
@@ -3632,13 +3632,13 @@ double pfem1d_DNorm2
                               thfunc_dlp_snorm2_d_9, 
                               thfunc_dlp_snorm2_d_10};
  
-    double norm2 = 0;
+    matlib_real norm2 = 0;
     assert(u.elem_p!=NULL);
     if(u.len == (p+1)*N)
     {
         matlib_index i,j;
         matlib_index nsdata[num_threads][2];
-        double snorm2[num_threads];
+        matlib_real snorm2[num_threads];
         void* nonshared_data[num_threads][2];
 
         pthpool_arg_t   arg[num_threads];
@@ -3648,8 +3648,8 @@ double pfem1d_DNorm2
         matlib_index Np = N/(num_threads);
         if(p>10)
         {
-            matlib_dv A;
-            matlib_create_dv(p+1, &A, MATLIB_COL_VECT);
+            matlib_xv A;
+            matlib_create_xv(p+1, &A, MATLIB_COL_VECT);
 
             for( j=0; j<A.len; j++)
             {
@@ -3756,7 +3756,7 @@ static void* thfunc_zlp_snorm2_d(void* mp)
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
     matlib_complex *u   = (matlib_complex*) (ptr->shared_data[0]);
-    matlib_dv A = *(matlib_dv*) (ptr->shared_data[1]);
+    matlib_xv A = *(matlib_xv*) (ptr->shared_data[1]);
 
     matlib_index i, j;
 
@@ -3765,7 +3765,7 @@ static void* thfunc_zlp_snorm2_d(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (A.len * start_end_index[0]);
 
     *snorm = 0;
@@ -3790,7 +3790,7 @@ static void* thfunc_zlp_snorm2_d(void* mp)
     debug_exit("Thread id: %d, snorm2: %0.16f", ptr->thread_index, *snorm);
 }
 
-double pfem1d_ZNorm2
+matlib_real pfem1d_ZNorm2
 (
     matlib_index    p,
     matlib_index    N,
@@ -3813,13 +3813,13 @@ double pfem1d_ZNorm2
                               thfunc_zlp_snorm2_d_9, 
                               thfunc_zlp_snorm2_d_10};
  
-    double norm2 = 0;
+    matlib_real norm2 = 0;
     assert(u.elem_p!=NULL);
     if(u.len == (p+1)*N)
     {
         matlib_index i,j;
         matlib_index nsdata[num_threads][2];
-        double snorm2[num_threads];
+        matlib_real snorm2[num_threads];
         void* nonshared_data[num_threads][2];
 
         pthpool_arg_t   arg[num_threads];
@@ -3829,8 +3829,8 @@ double pfem1d_ZNorm2
         matlib_index Np = N/(num_threads);
         if(p>10)
         {
-            matlib_dv A;
-            matlib_create_dv(p+1, &A, MATLIB_COL_VECT);
+            matlib_xv A;
+            matlib_create_xv(p+1, &A, MATLIB_COL_VECT);
 
             for( j=0; j<A.len; j++)
             {
@@ -3932,22 +3932,22 @@ double pfem1d_ZNorm2
 }
 /*============================================================================*/
 
-/*** Begin Subroutine ***/
+ 
 static void* thfunc_dlp_snorm2_d_2(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
 
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (3 * start_end_index[0]);
 
     *snorm = 0;
@@ -3960,22 +3960,22 @@ static void* thfunc_dlp_snorm2_d_2(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_3(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (4 * start_end_index[0]);
 
     *snorm = 0;
@@ -3989,22 +3989,22 @@ static void* thfunc_dlp_snorm2_d_3(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_4(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (5 * start_end_index[0]);
 
     *snorm = 0;
@@ -4019,22 +4019,22 @@ static void* thfunc_dlp_snorm2_d_4(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_5(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (6 * start_end_index[0]);
 
     *snorm = 0;
@@ -4050,22 +4050,22 @@ static void* thfunc_dlp_snorm2_d_5(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_6(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (7 * start_end_index[0]);
 
     *snorm = 0;
@@ -4082,22 +4082,22 @@ static void* thfunc_dlp_snorm2_d_6(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_7(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (8 * start_end_index[0]);
 
     *snorm = 0;
@@ -4115,22 +4115,22 @@ static void* thfunc_dlp_snorm2_d_7(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_8(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (9 * start_end_index[0]);
 
     *snorm = 0;
@@ -4149,22 +4149,22 @@ static void* thfunc_dlp_snorm2_d_8(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_9(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (10 * start_end_index[0]);
 
     *snorm = 0;
@@ -4184,22 +4184,22 @@ static void* thfunc_dlp_snorm2_d_9(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_dlp_snorm2_d_10(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
-    double *u   = (double*) (ptr->shared_data);
+    matlib_real *u   = (matlib_real*) (ptr->shared_data);
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data[0]);
     debug_body( "Thread id: %d, start_index: %d, end_index: %d",
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (11 * start_end_index[0]);
 
     *snorm = 0;
@@ -4220,14 +4220,14 @@ static void* thfunc_dlp_snorm2_d_10(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
+ 
 
 /* COMPLEX VERSION */ 
 
-/*** Begin Subroutine ***/
+ 
 static void* thfunc_zlp_snorm2_d_2(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4238,7 +4238,7 @@ static void* thfunc_zlp_snorm2_d_2(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (3 * start_end_index[0]);
 
     *snorm = 0;
@@ -4251,11 +4251,11 @@ static void* thfunc_zlp_snorm2_d_2(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_3(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4266,7 +4266,7 @@ static void* thfunc_zlp_snorm2_d_3(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (4 * start_end_index[0]);
 
     *snorm = 0;
@@ -4280,11 +4280,11 @@ static void* thfunc_zlp_snorm2_d_3(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_4(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4295,7 +4295,7 @@ static void* thfunc_zlp_snorm2_d_4(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (5 * start_end_index[0]);
 
     *snorm = 0;
@@ -4310,11 +4310,11 @@ static void* thfunc_zlp_snorm2_d_4(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_5(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4325,7 +4325,7 @@ static void* thfunc_zlp_snorm2_d_5(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (6 * start_end_index[0]);
 
     *snorm = 0;
@@ -4341,11 +4341,11 @@ static void* thfunc_zlp_snorm2_d_5(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_6(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4356,7 +4356,7 @@ static void* thfunc_zlp_snorm2_d_6(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (7 * start_end_index[0]);
 
     *snorm = 0;
@@ -4373,11 +4373,11 @@ static void* thfunc_zlp_snorm2_d_6(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_7(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4388,7 +4388,7 @@ static void* thfunc_zlp_snorm2_d_7(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (8 * start_end_index[0]);
 
     *snorm = 0;
@@ -4406,11 +4406,11 @@ static void* thfunc_zlp_snorm2_d_7(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_8(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4421,7 +4421,7 @@ static void* thfunc_zlp_snorm2_d_8(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (9 * start_end_index[0]);
 
     *snorm = 0;
@@ -4440,11 +4440,11 @@ static void* thfunc_zlp_snorm2_d_8(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_9(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4455,7 +4455,7 @@ static void* thfunc_zlp_snorm2_d_9(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (10 * start_end_index[0]);
 
     *snorm = 0;
@@ -4475,11 +4475,11 @@ static void* thfunc_zlp_snorm2_d_9(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
-/*** Begin Subroutine ***/
+ 
+ 
 static void* thfunc_zlp_snorm2_d_10(void* mp)
 {
-    double tmp;
+    matlib_real tmp;
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
 
@@ -4490,7 +4490,7 @@ static void* thfunc_zlp_snorm2_d_10(void* mp)
                 ptr->thread_index, 
                 start_end_index[0], start_end_index[1]);
 
-    double* snorm   = (double*) (ptr->nonshared_data[1]);
+    matlib_real* snorm   = (matlib_real*) (ptr->nonshared_data[1]);
     u += (11 * start_end_index[0]);
 
     *snorm = 0;
@@ -4511,5 +4511,5 @@ static void* thfunc_zlp_snorm2_d_10(void* mp)
         *snorm += tmp;
     }
 }
-/*** End of subroutine ***/
+ 
 

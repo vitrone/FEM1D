@@ -9,6 +9,10 @@
 #include "debug.h"
 #include "ehandler.h"
 
+#define MKL_Complex16 matlib_complex 
+#define _CBLAS_ORDER     CBLAS_ORDER
+#define _CBLAS_TRANSPOSE CBLAS_TRANSPOSE
+
 
 #ifdef MATLIB_NTRACE_DATA
     #define _TRACE_DATA 0
@@ -21,15 +25,19 @@
 #define BEGIN_DTRACE if(_TRACE_DATA){
 #define END_DTRACE }
 
-
-
 /*============================================================================*/
 
-typedef unsigned int   matlib_index;
+/* Indexing types */ 
+typedef unsigned int matlib_index;
+/* Real numbers */ 
+typedef double matlib_real;
+/* Complex numbers */ 
 typedef double complex matlib_complex;
+/* Integers */
+typedef int matlib_int;
 
-#define _CBLAS_ORDER     CBLAS_ORDER
-#define _CBLAS_TRANSPOSE CBLAS_TRANSPOSE
+#define matlib_dv matlib_xv
+#define matlib_dm matlib_xm
 
 
 typedef enum
@@ -75,17 +83,17 @@ typedef enum
 
 /* Data types for matrix library 
  *
- * DV : Double Vector
- * DM : Double Matrix
+ * matlib_xv : Real Vector
+ * matlib_xm : Real Matrix
  *
  * */ 
 typedef struct
 {
     matlib_index  len;
     MATLIB_VECT_T type;
-    double*       elem_p;
+    matlib_real*  elem_p;
 
-} matlib_dv;
+} matlib_xv;
 
 typedef struct
 {
@@ -95,50 +103,30 @@ typedef struct
 
 } matlib_zv;
 
-typedef struct
-{
-    matlib_index         len;
-    MATLIB_VECT_T type;
-    double*       elem_pr;
-    double*       elem_pi;
-
-} MATLIB_TV;
-
 /* The operation field is to tell if the meaningful entries belong to the current
  * matrix or the transposed version of it. An actual taranspose operation is
  * carried out only if strictly needed.
  * */ 
 typedef struct
 {
-    matlib_index        lenc; /* length of columns */ 
-    matlib_index        lenr; /* length of rows    */ 
+    matlib_index lenc; /* length of columns */ 
+    matlib_index lenr; /* length of rows    */ 
     MATLIB_ORDER order;
     MATLIB_TRANSPOSE op; /* operation */ 
-    double*      elem_p;
+    matlib_real* elem_p;
 
-} matlib_dm;
+} matlib_xm;
 
 typedef struct
 {
-    matlib_index           lenc; /* length of columns */ 
-    matlib_index           lenr; /* length of rows    */ 
-    MATLIB_ORDER    order;
+    matlib_index lenc; /* length of columns */ 
+    matlib_index lenr; /* length of rows    */ 
+    MATLIB_ORDER order;
     MATLIB_TRANSPOSE op; /* operation */ 
     matlib_complex* elem_p;
 
 } matlib_zm;
 
-/* A Tuple of real and imaginary parts */ 
-typedef struct
-{
-    matlib_index        lenc; /* length of columns */ 
-    matlib_index        lenr; /* length of rows    */ 
-    MATLIB_ORDER order;
-    MATLIB_TRANSPOSE op; /* operation */ 
-    double*      elem_pr;
-    double*      elem_pi;
-
-} MATLIB_TM;
 /*============================================================================*/
 /* SPARSE FORMATS */
 typedef enum
@@ -159,25 +147,25 @@ typedef enum
 
 typedef struct
 {
-    matlib_index         lenc; /* length of columns */ 
-    matlib_index         lenr; /* length of rows    */
-    matlib_index*        rowIn;
-    matlib_index*        colIn;
+    matlib_index  lenc; /* length of columns */ 
+    matlib_index  lenr; /* length of rows    */
+    matlib_index* rowIn;
+    matlib_index* colIn;
     MATLIB_SPARSE format;
-    double*       elem_p;
+    matlib_real*  elem_p;
 
-} matlib_dsparsem;
+} matlib_xm_sparse;
 
 typedef struct
 {
-    matlib_index           lenc; /* length of columns */ 
-    matlib_index           lenr; /* length of rows    */
-    matlib_index*          rowIn;
-    matlib_index*          colIn;
+    matlib_index    lenc; /* length of columns */ 
+    matlib_index    lenr; /* length of rows    */
+    matlib_index*   rowIn;
+    matlib_index*   colIn;
     MATLIB_SPARSE   format;
     matlib_complex* elem_p;
 
-} matlib_zsparsem;
+} matlib_zm_sparse;
 
 /* This data structure is meant to store several sparse matrices which have the
  * same sparsity structure. This proves useful for solving initial value
@@ -185,40 +173,40 @@ typedef struct
  * for several time steps can be computed and stored at once.*/ 
 typedef struct
 {
-    matlib_index         lenc; /* length of columns */ 
-    matlib_index         lenr; /* length of rows    */
-    matlib_index*        rowIn;
-    matlib_index*        colIn;
+    matlib_index  lenc; /* length of columns */ 
+    matlib_index  lenr; /* length of rows    */
+    matlib_index* rowIn;
+    matlib_index* colIn;
     MATLIB_SPARSE format;
-    matlib_index         nsparse;
-    double**      elem_p;
+    matlib_index  nsparse;
+    matlib_real** elem_p;
 
-} matlib_dnsparsem;
+} matlib_xm_nsparse;
 
 typedef struct
 {
-    matlib_index           lenc; /* length of columns */ 
-    matlib_index           lenr; /* length of rows    */
-    matlib_index*          rowIn;
-    matlib_index*          colIn;
-    MATLIB_SPARSE   format;
-    matlib_index           nsparse;
+    matlib_index  lenc; /* length of columns */ 
+    matlib_index  lenr; /* length of rows    */
+    matlib_index* rowIn;
+    matlib_index* colIn;
+    MATLIB_SPARSE format;
+    matlib_index  nsparse;
     matlib_complex** elem_p;
 
-} matlib_znsparsem;
+} matlib_zm_nsparse;
 
 
 /*============================================================================*/
 /* Define MACROS */ 
 
-#define matlib_free(ptr)    \
-    do{ if(ptr!=NULL)       \
-        free((void*) ptr);  \
+#define matlib_free(ptr)                                                 \
+    do{ if(ptr!=NULL)                                                    \
+        free((void*) ptr);                                               \
       } while (0)
 
-#define DEBUG_PRINT_DV(NAME, fmt,...)                                    \
+#define DEBUG_PRINT_XV(NAME, fmt,...)                                    \
     do {                                                                 \
-         if(_TRACE_DATA){                                          \
+         if(_TRACE_DATA){                                                \
             matlib_index NAME ## _i;                                     \
             for((NAME ## _i)=0;                                          \
                 (NAME ## _i)<(NAME.len);                                 \
@@ -238,13 +226,13 @@ typedef struct
 /* For complex Vectors */ 
 #define DEBUG_PRINT_ZV(NAME, fmt,...)                                    \
     do {                                                                 \
-         if(_TRACE_DATA){                                          \
+         if(_TRACE_DATA){                                                \
             matlib_index NAME ## _i;                                     \
             for((NAME ## _i)=0;                                          \
                 (NAME ## _i)<(NAME.len);                                 \
                 (NAME ##_i)++){                                          \
                 fprintf( stderr,                                         \
-                    "%s:%d:%s: -(" fmt #NAME "[%d] = % 0.16f %+0.16fi)\n",\
+                    "%s:%d:%s: -(" fmt #NAME "[%d] = % 0.16f%+0.16fi)\n",\
                          __FILE__,                                       \
                          __LINE__,                                       \
                          __func__,                                       \
@@ -256,10 +244,10 @@ typedef struct
          }                                                               \
     } while (0)                                                          
 
-/* Debuging a double matrix */ 
-#define DEBUG_PRINT_DM(NAME, fmt,...)                                    \
+/* Debuging a matlib_real matrix */ 
+#define DEBUG_PRINT_XM(NAME, fmt,...)                                    \
     do {                                                                 \
-         if(_TRACE_DATA){                                          \
+         if(_TRACE_DATA){                                                \
             matlib_index NAME ## _i, NAME ## _j;                         \
             matlib_index NAME ## _col_st, NAME ## _row_st;               \
             if ((NAME.order) == MATLIB_COL_MAJOR){                       \
@@ -277,7 +265,7 @@ typedef struct
                     (NAME ## _j)<(NAME.lenr);                            \
                     (NAME ## _j)++){                                     \
                     fprintf( stderr,                                     \
-                         "%s:%d:%s: -(" fmt #NAME "[%d][%d] = % 0.16f)\n",\
+                        "%s:%d:%s: -(" fmt #NAME "[%d][%d] = % 0.16f)\n",\
                              __FILE__,                                   \
                              __LINE__,                                   \
                              __func__,                                   \
@@ -295,7 +283,7 @@ typedef struct
 /* Debuging a complex matrix */ 
 #define DEBUG_PRINT_ZM(NAME, fmt,...)                                    \
     do {                                                                 \
-         if(_TRACE_DATA){                                          \
+         if(_TRACE_DATA){                                                \
             matlib_index NAME ## _i, NAME ## _j;                         \
             matlib_index NAME ## _col_st, NAME ## _row_st;               \
             if ((NAME.order) == MATLIB_COL_MAJOR){                       \
@@ -336,115 +324,100 @@ typedef struct
  * V = MK_VM(B);
  *
  * */ 
-#define MK_VM(B) { .len  = B.lenc * B.lenr, \
-                   .type = MATLIB_COL_VECT, \
+#define MK_VM(B) { .len  = B.lenc * B.lenr,                             \
+                   .type = MATLIB_COL_VECT,                             \
                    .elem_p = B.elem_p }
 
 
-#define GET_CBLASORDER_AND_STRIDE(order_enum, stride, M)      \
-    do {                                                      \
-        if (M.order == MATLIB_COL_MAJOR)                      \
-        {                                                     \
-            stride = M.lenc;                                  \
-            order_enum = CblasColMajor;                       \
-        }                                                     \
-        else if (M.order == MATLIB_ROW_MAJOR)                 \
-        {                                                     \
-            stride = M.lenr;                                  \
-            order_enum = CblasRowMajor;                       \
-        }                                                     \
-        else                                                  \
-        {                                                     \
-            term_execb( "Storage order of the matrix " #M     \
-                        " is unknown: (order enum: %d)",      \
-                        M.order);                             \
-        }                                                     \
-                                                              \
+#define GET_CBLASORDER_AND_STRIDE(order_enum, stride, M)                \
+    do {                                                                \
+        if (M.order == MATLIB_COL_MAJOR)                                \
+        {                                                               \
+            stride = M.lenc;                                            \
+            order_enum = CblasColMajor;                                 \
+        }                                                               \
+        else if (M.order == MATLIB_ROW_MAJOR)                           \
+        {                                                               \
+            stride = M.lenr;                                            \
+            order_enum = CblasRowMajor;                                 \
+        }                                                               \
+        else                                                            \
+        {                                                               \
+            term_execb( "Storage order of the matrix " #M               \
+                        " is unknown: (order enum: %d)",                \
+                        M.order);                                       \
+        }                                                               \
+                                                                        \
     } while (0)
 
  
-#define MATLIB_TRANSPOSE(M)                               \
-do {                                                      \
-        matlib_index M ##_dim = M.lenc;                   \
-        M.lenc = M.lenr;                                  \
-        M.lenr = M ## _dim;                               \
-        if (M.order == MATLIB_COL_MAJOR)                  \
-        {                                                 \
-            M.order = MATLIB_ROW_MAJOR;                   \
-        }                                                 \
-        else if (M.order == MATLIB_ROW_MAJOR)             \
-        {                                                 \
-            M.order = MATLIB_COL_MAJOR;                   \
-        }                                                 \
-        else                                              \
-        {                                                 \
-            term_execb( "Storage order of the matrix " #M \
-                        " is unknown: (order enum: %d)",  \
-                        M.order);                         \
-        }                                                 \
-                                                          \
+#define MATLIB_TRANSPOSE(M)                                             \
+do {                                                                    \
+        matlib_index M ##_dim = M.lenc;                                 \
+        M.lenc = M.lenr;                                                \
+        M.lenr = M ## _dim;                                             \
+        if (M.order == MATLIB_COL_MAJOR)                                \
+        {                                                               \
+            M.order = MATLIB_ROW_MAJOR;                                 \
+        }                                                               \
+        else if (M.order == MATLIB_ROW_MAJOR)                           \
+        {                                                               \
+            M.order = MATLIB_COL_MAJOR;                                 \
+        }                                                               \
+        else                                                            \
+        {                                                               \
+            term_execb( "Storage order of the matrix " #M               \
+                        " is unknown: (order enum: %d)",                \
+                        M.order);                                       \
+        }                                                               \
+                                                                        \
 } while (0)                                                        
-/*============================================================================*/
+
+/*============================================================================+/
+ |Allocation of memory
+/+============================================================================*/
 void matlib_create_zv
 (
-    matlib_index         length,
+    matlib_index  length,
     matlib_zv*    v,
     MATLIB_VECT_T type_enum
 );
-void matlib_create_tv
+
+void matlib_create_xv
 (
-    matlib_index         length,
-    MATLIB_TV*    v,
-    MATLIB_VECT_T type_enum
-);
-void matlib_create_dv
-(
-    matlib_index           length,
-    matlib_dv*    v,
+    matlib_index  length,
+    matlib_xv*    v,
     MATLIB_VECT_T type_enum
 );
 
 void matlib_create_zm
 ( 
-    matlib_index        lenc,
-    matlib_index        lenr,
+    matlib_index lenc,
+    matlib_index lenr,
     matlib_zm*   M,
     MATLIB_ORDER order_enum,
     MATLIB_TRANSPOSE trans_enum
 );
-void matlib_create_tm
+void matlib_create_xm
 ( 
-    matlib_index        lenc,
-    matlib_index        lenr,
-    MATLIB_TM*   M,
+    matlib_index lenc,
+    matlib_index lenr,
+    matlib_xm*   M,
     MATLIB_ORDER order_enum,
     MATLIB_TRANSPOSE trans_enum
 );
-void matlib_create_dm
-( 
-    matlib_index        lenc,
-    matlib_index        lenr,
-    matlib_dm*   M,
-    MATLIB_ORDER order_enum,
-    MATLIB_TRANSPOSE trans_enum
-);
-/*============================================================================*/
+/*============================================================================+/
+ |BLAS Level I Routines
+/+============================================================================*/
 
-double matlib_dnrm2(matlib_dv x);
-double matlib_znrm2(matlib_zv x);
-double matlib_tnrm2(MATLIB_TV x);
+matlib_real matlib_xnrm2(matlib_xv x);
+matlib_real matlib_znrm2(matlib_zv x);
 
-void matlib_daxpy
+void matlib_xaxpy
 (
-    const double    alpha,
-    const matlib_dv x,
-          matlib_dv y
-);
-void matlib_taxpy
-(
-    const matlib_complex alpha,
-    const MATLIB_TV      x,
-          MATLIB_TV      y
+    const matlib_real alpha,
+    const matlib_xv   x,
+          matlib_xv   y
 );
 void matlib_zaxpy
 (
@@ -459,19 +432,19 @@ void matlib_zaxpby
     const matlib_complex beta,
           matlib_zv      y
 );
-double matlib_ddot
+matlib_real matlib_xdot
 (
-    const matlib_dv x,
-    const matlib_dv y
+    const matlib_xv x,
+    const matlib_xv y
 );
 
-void matlib_dgemv
+void matlib_xgemv
 (
-    const double    alpha,
-    const matlib_dm A, 
-    const matlib_dv u,
-    const double    beta,
-          matlib_dv v
+    const matlib_real alpha,
+    const matlib_xm   A, 
+    const matlib_xv   u,
+    const matlib_real beta,
+          matlib_xv   v
 );
 void matlib_zgemv
 (
@@ -482,32 +455,32 @@ void matlib_zgemv
           matlib_zv      v
 );
 
-void matlib_dcsrsymv
+void matlib_xcsrsymv
 /* Double CSR Symmetric Matrix-Vector */ 
 (
-    const MATLIB_UPLO     uplo_enum,
-          matlib_dsparsem A, 
-    const matlib_dv       u,
-          matlib_dv       v
+    const MATLIB_UPLO      uplo_enum,
+          matlib_xm_sparse A, 
+    const matlib_xv        u,
+          matlib_xv        v
 );
 
 void matlib_zcsrsymv
 /* Double CSR Symmetric Matrix-Vector */ 
 (
-    const MATLIB_UPLO     uplo_enum,
-          matlib_zsparsem A, 
-    const matlib_zv       u,
-          matlib_zv       v
+    const MATLIB_UPLO      uplo_enum,
+          matlib_zm_sparse A, 
+    const matlib_zv        u,
+          matlib_zv        v
 );
 /*============================================================================*/
 
-void matlib_dgemm
+void matlib_xgemm
 (
-    const double    alpha,
-    const matlib_dm A, 
-    const matlib_dm B, 
-    const double    beta,
-          matlib_dm C
+    const matlib_real alpha,
+    const matlib_xm   A, 
+    const matlib_xm   B, 
+    const matlib_real beta,
+          matlib_xm   C
 );
 void matlib_zgemm
 (
@@ -522,14 +495,14 @@ void matlib_zgemm
  | IO functions for vectors and matrices
 /+============================================================================*/
 
-void matlib_dmwrite_csv(char* file_name, matlib_dm M);
+void matlib_xmwrite_csv(char* file_name, matlib_xm M);
 void matlib_zmwrite_csv(char* file_name, matlib_zm M);
 
-void matlib_dvwrite_csv
+void matlib_xvwrite_csv
 (
     char*        file_name, 
     matlib_index n,
-    matlib_dv    v[n]
+    matlib_xv    v[n]
 );
 
 void matlib_zvwrite_csv
@@ -539,11 +512,11 @@ void matlib_zvwrite_csv
     matlib_zv    v[n]
 );
 
-void matlib_dzvwrite_csv
+void matlib_xzvwrite_csv
 (
     char*        file_name, 
     matlib_index m,
-    matlib_dv    u[m],
+    matlib_xv    u[m],
     matlib_index n,
     matlib_zv    v[n]
 );
@@ -581,12 +554,12 @@ typedef enum
 typedef struct
 {
     void*          ptr[PARDISO_NIPARAM];
-    int            iparam[PARDISO_NIPARAM];
+    matlib_index   iparam[PARDISO_NIPARAM];
     PARDISO_PHASE  phase_enum;
     PARDISO_MTYPE  mtype;
     PARDISO_SOLVEC sol_enum;
     matlib_index   nsparse; /* number of sparse matrices with same 
-                                sparsity structure */ 
+                               sparsity structure */ 
     matlib_index   mnum;   /* matrix number to be used for solution */
     void*          smat_p; /* Sparse matrix struct */ 
     void*          rhs_p;  /* vector struct        */ 

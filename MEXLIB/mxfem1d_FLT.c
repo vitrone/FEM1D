@@ -39,50 +39,52 @@ void mexFunction
         mexErrMsgIdAndTxt("FEM1D:FLT:FM","Input matrix must be type double.");
     }
 
-    matlib_dm FM = { .lenc = mxGetM(prhs[1]), 
+    matlib_xm FM = { .lenc = mxGetM(prhs[1]), 
                      .lenr = mxGetN(prhs[1]), 
                      .elem_p = mxGetPr(prhs[1]),
                      .op     = MATLIB_NO_TRANS,
                      .order  = MATLIB_COL_MAJOR };
 
-    matlib_dm ur = { .lenc = mxGetM(prhs[2]), 
+    matlib_xm ur = { .lenc = mxGetM(prhs[2]), 
                      .lenr = mxGetN(prhs[2]), 
                      .elem_p = mxGetPr(prhs[2]), 
                      .op     = MATLIB_NO_TRANS,
                      .order  = MATLIB_COL_MAJOR};
     
+    matlib_index dim = N*FM.lenc;
+
     if(mxIsComplex(prhs[2]))
     {
-        matlib_dm ui = { .lenc = mxGetM(prhs[2]), 
-                         .lenr = mxGetN(prhs[2]), 
+        matlib_xm ui = { .lenc = ur.lenc, 
+                         .lenr = ui.lenr, 
                          .elem_p = mxGetPi(prhs[2]),
                          .op     = MATLIB_NO_TRANS,
                          .order  = MATLIB_COL_MAJOR};
 
-        plhs[0] = mxCreateDoubleMatrix( ur.lenc, ur.lenr, mxCOMPLEX);
-        matlib_dm Ur = { .lenc = mxGetM(plhs[0]), 
-                         .lenr = mxGetN(plhs[0]), 
+        plhs[0] = mxCreateDoubleMatrix( dim, ur.lenr, mxCOMPLEX);
+        matlib_xm Ur = { .lenc = dim, 
+                         .lenr = ur.lenr, 
                          .elem_p = mxGetPr(plhs[0]), 
                          .op     = MATLIB_NO_TRANS,
                          .order  = MATLIB_COL_MAJOR};
 
-        matlib_dm Ui = { .lenc = mxGetM(plhs[0]), 
-                         .lenr = mxGetN(plhs[0]), 
+        matlib_xm Ui = { .lenc = dim, 
+                         .lenr = ur.lenr, 
                          .elem_p = mxGetPi(plhs[0]), 
                          .op     = MATLIB_NO_TRANS,
                          .order  = MATLIB_COL_MAJOR};
-        fem1d_DFLT2(N, FM, ur, Ur);
-        fem1d_DFLT2(N, FM, ui, Ui);
+        fem1d_XFLT2(N, FM, ur, Ur);
+        fem1d_XFLT2(N, FM, ui, Ui);
     }
     else
     {
-        plhs[0] = mxCreateDoubleMatrix( ur.lenc, ur.lenr, mxREAL);
-        matlib_dm Ur = { .lenc = mxGetM(plhs[0]), 
-                         .lenr = mxGetN(plhs[0]), 
+        plhs[0] = mxCreateDoubleMatrix( dim, ur.lenr, mxREAL);
+        matlib_xm Ur = { .lenc = dim, 
+                         .lenr = ur.lenr, 
                          .elem_p = mxGetPr(plhs[0]), 
                          .op     = MATLIB_NO_TRANS,
                          .order  = MATLIB_COL_MAJOR};
 
-        fem1d_DFLT2(N, FM, ur, Ur);
+        fem1d_XFLT2(N, FM, ur, Ur);
     }
 }

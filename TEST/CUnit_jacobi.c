@@ -4,9 +4,6 @@
  |              Depends of Matrix Library for Linear Algebra.
  |
  |
- |
- |
- |
  |============================================================================*/
 
 
@@ -20,7 +17,7 @@
 #include <errno.h>
 #include "mkl.h"
 
-//#define NDEBUG
+#define NDEBUG
 #include "jacobi.h"
 
 /* CUnit modules */
@@ -30,7 +27,7 @@
 /*============================================================================*/
 
 
-static const double TOL = 1e-9;
+static const matlib_real TOL = 1e-9;
 
 int init_suite(void)
 {
@@ -41,12 +38,12 @@ int clean_suite(void)
       return 0;
 }
 /*============================================================================*/
-double jacobi_calcjp2
+matlib_real jacobi_calcjp2
 (
-    int n, 
-    double a, 
-    double b, 
-    double x
+    matlib_index n, 
+    matlib_real a, 
+    matlib_real b, 
+    matlib_real x
 )
 /* 
  * Calculate Jacobi polynomials: $J^{(a,b)}_{n-1}(x),J^{(a,b)}_{n}(x)$ 
@@ -55,8 +52,8 @@ double jacobi_calcjp2
  * */ 
 {
     matlib_index i;
-    double tmp, tmp1, JP[2];
-    double C, D, E;
+    matlib_real tmp, tmp1, JP[2];
+    matlib_real C, D, E;
     
     *(JP+0) = 1;
     /* 
@@ -89,12 +86,12 @@ double jacobi_calcjp2
  * */ 
 void test_jacobi_zeros_general(matlib_index n)
 {
-    double a = -0.4;
-    double b = -0.3;
-    double T;
+    matlib_real a = -0.4;
+    matlib_real b = -0.3;
+    matlib_real T;
 
-    matlib_dv x;
-    matlib_create_dv(n, &x, MATLIB_COL_VECT);
+    matlib_xv x;
+    matlib_create_xv(n, &x, MATLIB_COL_VECT);
 
     jacobi_find_zeros(n, a, b, x.elem_p, TOL);
     for (matlib_index i=0; i< x.len; i++)

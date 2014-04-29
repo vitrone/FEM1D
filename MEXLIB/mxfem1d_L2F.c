@@ -34,7 +34,7 @@ void mexFunction
     
     matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
 
-    matlib_dv ur = { .len    = mxGetN(prhs[1]), 
+    matlib_xv ur = { .len    = mxGetN(prhs[1]), 
                      .elem_p = mxGetPr(prhs[1]),
                      .type   = MATLIB_COL_VECT};
 
@@ -43,27 +43,27 @@ void mexFunction
 
     if(mxIsComplex(prhs[1]))
     {
-        matlib_dv ui = {  .len    = ur.len,
+        matlib_xv ui = {  .len    = ur.len,
                           .elem_p = mxGetPr(prhs[1]),
                           .type   = MATLIB_COL_VECT};
         plhs[0] = mxCreateDoubleMatrix( dim, 1, mxCOMPLEX);
-        matlib_dv vbr = { .len    = dim, 
+        matlib_xv vbr = { .len    = dim, 
                           .elem_p = mxGetPr(plhs[0]),
                           .type   = MATLIB_COL_VECT};
-        matlib_dv vbi = { .len    = dim, 
+        matlib_xv vbi = { .len    = dim, 
                           .elem_p = mxGetPr(plhs[0]),
                           .type   = MATLIB_COL_VECT};
 
-        fem1d_DL2F(p, ur, vbr);
-        fem1d_DL2F(p, ui, vbi);
+        fem1d_XL2F(p, ur, vbr);
+        fem1d_XL2F(p, ui, vbi);
     }
     else
     {
         plhs[0] = mxCreateDoubleMatrix( dim, 1, mxREAL);
-        matlib_dv vbr = { .len    = dim,
+        matlib_xv vbr = { .len    = dim,
                           .elem_p = mxGetPr(plhs[0]),
                           .type   = MATLIB_COL_VECT};
-        fem1d_DL2F(p, ur, vbr);
+        fem1d_XL2F(p, ur, vbr);
     
     }
 }

@@ -1,4 +1,6 @@
 classdef GP_EQUATIONS1
+% tc = test_fem1d.m; 
+% run(tc, 'test_GP_ABC1a_CQ');
 
     methods (Static)
         function out = ABC1a_CQ1(Data)
@@ -178,8 +180,8 @@ classdef GP_EQUATIONS1
             vG1o2   =  [];
             vGm1o2  =  [];
             for j=2:Nt,
-                [Pv Pb] =   prjlp2fem( p, N, E);
-                F       =   -I*r*J*[Pv;Pb];
+                Pvb = mxfem1d_PrjL2F( p, E);
+                F       =   -I*r*J*Pvb;
                 vG1o2   =   [G1o2(j),vG1o2];
                 vGm1o2  =   [Gm1o2(j),vGm1o2];
                 % Left:  u_x-i^(-1/2)*r1o2*u=BL
@@ -227,8 +229,8 @@ classdef GP_EQUATIONS1
                     tmpNL   =   chi*(tmpu.^2).*conj(tmpu);
                     tmp     =   fem_flt(p, N, P, FMi, tmpNL);
                     
-                    [Pv Pb] =   prjlp2fem( p, N, tmp);
-                    tmpF    =   [Pv;Pb]*J+F;
+                    Pvb     =   mxfem1d_PrjL2F( p, tmp);
+                    tmpF    =   Pvb*J+F;
                     tmpF(1)     =   tmpF(1)-mBL;
                     tmpF(N+1)   =   tmpF(N+1)+mBR;
                     

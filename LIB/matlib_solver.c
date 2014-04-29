@@ -65,10 +65,10 @@ void matlib_pardiso(pardiso_solver_t* data)
     else if (data->phase_enum == PARDISO_ANALYSIS_AND_FACTOR)
     {
         debug_body("%s", "Start testing PARDISO");
-        int nrhs  = 1; /* Number of right hand sides  */ 
+        matlib_index nrhs  = 1; /* Number of right hand sides  */ 
 
-        int msglvl = 0; /* Print statistical information in file */
-        int error  = 0; /* Initialize error flag */
+        matlib_index msglvl = 0; /* Prmatlib_index statistical information in file */
+        matlib_index error  = 0; /* Initialize error flag */
         debug_body("nr. sparse matrices: %d", data->nsparse);
         matlib_index maxfct = 1;
         matlib_index mnum = 1;
@@ -78,7 +78,7 @@ void matlib_pardiso(pardiso_solver_t* data)
             if(data->mtype == PARDISO_COMPLEX_SYM)
             {
                 debug_body("%s", "Factoring a complex symmetric matrix");
-                matlib_znsparsem* smat_p = (matlib_znsparsem*) data->smat_p;
+                matlib_zm_nsparse* smat_p = (matlib_zm_nsparse*) data->smat_p;
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
                           &smat_p->lenc,
@@ -93,7 +93,7 @@ void matlib_pardiso(pardiso_solver_t* data)
             else
             {
                 debug_body("%s", "Factoring a real symmetric matrix");
-                matlib_dnsparsem* smat_p = (matlib_dnsparsem*) data->smat_p;
+                matlib_xm_nsparse* smat_p = (matlib_xm_nsparse*) data->smat_p;
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
                           &smat_p->lenc,
@@ -111,7 +111,7 @@ void matlib_pardiso(pardiso_solver_t* data)
             if(data->mtype == PARDISO_COMPLEX_SYM)
             {
                 debug_body("%s", "Factoring a complex symmetric matrix");
-                matlib_zsparsem* smat_p = (matlib_zsparsem*) data->smat_p;
+                matlib_zm_sparse* smat_p = (matlib_zm_sparse*) data->smat_p;
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
                           &smat_p->lenc,
@@ -126,7 +126,7 @@ void matlib_pardiso(pardiso_solver_t* data)
             else
             {
                 debug_body("%s", "Factoring a real symmetric matrix");
-                matlib_dsparsem* smat_p = (matlib_dsparsem*) data->smat_p;
+                matlib_xm_sparse* smat_p = (matlib_xm_sparse*) data->smat_p;
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
                           &smat_p->lenc,
@@ -147,10 +147,10 @@ void matlib_pardiso(pardiso_solver_t* data)
     }
     else if(data->phase_enum == PARDISO_SOLVE_AND_REFINE)
     {
-        int nrhs  = 1; /* Number of right hand sides  */ 
+        matlib_index nrhs  = 1; /* Number of right hand sides  */ 
 
-        int msglvl = 0; /* Print statistical information in file */
-        int error  = 0; /* Initialize error flag */
+        matlib_index msglvl = 0; /* Prmatlib_index statistical information in file */
+        matlib_index error  = 0; /* Initialize error flag */
         matlib_index maxfct = 1;
         matlib_index mnum = 1;
 
@@ -160,7 +160,7 @@ void matlib_pardiso(pardiso_solver_t* data)
             if(data->mtype == PARDISO_COMPLEX_SYM)
             {
 
-                matlib_znsparsem* smat_p = (matlib_znsparsem*) data->smat_p;
+                matlib_zm_nsparse* smat_p = (matlib_zm_nsparse*) data->smat_p;
                 matlib_zv* rhs_p  = (matlib_zv*) data->rhs_p;
                 matlib_zv* sol_p  = (matlib_zv*) data->sol_p;
 
@@ -192,9 +192,9 @@ void matlib_pardiso(pardiso_solver_t* data)
             }
             else
             {
-                matlib_dnsparsem* smat_p = (matlib_dnsparsem*) data->smat_p;
-                matlib_dv* rhs_p  = (matlib_dv*) data->rhs_p;
-                matlib_dv* sol_p  = (matlib_dv*) data->sol_p;
+                matlib_xm_nsparse* smat_p = (matlib_xm_nsparse*) data->smat_p;
+                matlib_xv* rhs_p  = (matlib_xv*) data->rhs_p;
+                matlib_xv* sol_p  = (matlib_xv*) data->sol_p;
 
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
@@ -214,7 +214,7 @@ void matlib_pardiso(pardiso_solver_t* data)
         {
             if(data->mtype == PARDISO_COMPLEX_SYM)
             {
-                matlib_zsparsem* smat_p = (matlib_zsparsem*) data->smat_p;
+                matlib_zm_sparse* smat_p = (matlib_zm_sparse*) data->smat_p;
                 matlib_zv* rhs_p  = (matlib_zv*) data->rhs_p;
                 matlib_zv* sol_p  = (matlib_zv*) data->sol_p;
 
@@ -234,9 +234,9 @@ void matlib_pardiso(pardiso_solver_t* data)
             }
             else
             {
-                matlib_dsparsem* smat_p  = (matlib_dsparsem*) data->smat_p;
-                matlib_dv* rhs_p  = (matlib_dv*) data->rhs_p;
-                matlib_dv* sol_p  = (matlib_dv*) data->sol_p;
+                matlib_xm_sparse* smat_p  = (matlib_xm_sparse*) data->smat_p;
+                matlib_xv* rhs_p  = (matlib_xv*) data->rhs_p;
+                matlib_xv* sol_p  = (matlib_xv*) data->sol_p;
 
                 PARDISO ( data->ptr, &maxfct, &mnum,
                           &data->mtype, &data->phase_enum,
@@ -263,14 +263,14 @@ void matlib_pardiso(pardiso_solver_t* data)
     else if(data->phase_enum == PARDISO_FREE)
     {
 
-        int msglvl = 0; /* Print statistical information in file */
-        int error  = 0; /* Initialize error flag */
+        matlib_index msglvl = 0; /* Prmatlib_index statistical information in file */
+        matlib_index error  = 0; /* Initialize error flag */
         matlib_index maxfct = 1;
         matlib_index mnum = 1;
 
         if(data->mtype == PARDISO_COMPLEX_SYM)
         {
-            matlib_znsparsem* smat_p = (matlib_znsparsem*) data->smat_p;
+            matlib_zm_nsparse* smat_p = (matlib_zm_nsparse*) data->smat_p;
 
             PARDISO ( data->ptr, &maxfct, &mnum,
                       &data->mtype, &data->phase_enum,
@@ -287,7 +287,7 @@ void matlib_pardiso(pardiso_solver_t* data)
         }
         else
         {
-            matlib_dnsparsem* smat_p = (matlib_dnsparsem*) data->smat_p;
+            matlib_xm_nsparse* smat_p = (matlib_xm_nsparse*) data->smat_p;
 
             PARDISO ( data->ptr, &maxfct, &mnum,
                       &data->mtype, &data->phase_enum,

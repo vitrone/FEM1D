@@ -4,8 +4,6 @@
 #                                                                             #
 # Description: makefile for creating .mexa64 binaries                         #
 #                                                                             #
-# History:                                                                    #
-# 19 July 2013: created                                                       #
 #                                                                             #
 #=============================================================================#
 SHELL = /bin/sh
@@ -26,50 +24,39 @@ MKL_LIBS = -Wl,--start-group $(IFACE_LIB) $(THREADING_LIB) $(CORE_LIB) -Wl,--end
 
 INCLUDES = -I/usr/local/MATLAB/R2013a/extern/include   \
            -I/usr/local/MATLAB/R2013a/simulink/include \
-           -DMATLAB_MEX_FILE                           \
            -I../INCLUDE -I$(MKLROOT)/include
 
 
 # CFLAG is used for the implicit rule to generate object files for C
 # $(CC) -c $(CFLAGS)
-CFLAGS = -ansi -D_GNU_SOURCE  -fexceptions -fPIC   \
-         -fno-omit-frame-pointer -pthread -std=c99 \
+CFLAGS = -ansi -D_GNU_SOURCE -DMATLAB_MEX_FILE -fexceptions -fPIC   \
+         -fno-omit-frame-pointer -std=c99                           \
          $(INCLUDES)
 
-LDFLAGS = -pthread -shared -L$(MKL_PATH) $(MKL_LIBS) \
-          -Wl,--version-script,/usr/local/MATLAB/R2013a/extern/lib/glnxa64/mexFunction.map
-CLIBS = -Wl,-rpath-link,/usr/local/MATLAB/R2013a/bin/glnxa64                 \
-        -L/usr/local/MATLAB/R2013a/bin/glnxa64 -lmx -lmex -lmat -lm -lstdc++ \
-        -L../BUILD -lfem1d
+LDFLAGS = -shared -L$(MKL_PATH) $(MKL_LIBS) -L../BUILD                                     \
+          -Wl,--version-script,/usr/local/MATLAB/R2013a/extern/lib/glnxa64/mexFunction.map \
+	  -Wl,-rpath-link,/usr/local/MATLAB/R2013a/bin/glnxa64                             \
+          -L/usr/local/MATLAB/R2013a/bin/glnxa64                                           \
+	  -lmx -lmex -lmat -lstdc++ -lpthread -lm -lfem1d -lmkl_rt
+
+CLIBS =               
 
 BUILDDIR = ../MEXBUILD
 INC_DIR = ../INCLUDE
 LIB_DIR = ../LIB
 # add the .c mex files here
-SOURCES =   fem2lp.c       \
-            fem1d_gmm.c    \
-            fem_flt2.c     \
-            fem_flt.c      \
-            mxLGLdataFM.c  \
-            mxLGLdataIM.c  \
-            mxLGLdataLT1.c \
-            mxLGLdataLT2.c \
-            mxfem1d_FLT.c  \
-            mxfem1d_ILT.c  \
-            mxfem1d_F2L.c  \
-            mxfem1d_L2F.c  \
-            mxfem1d_PrjL2F.c  \
-            fem_ilt2.c     \
-            fem_ilt.c      \
-            femlp_norm2.c  \
-            gfilters.c     \
-            LGLdataFM.c    \
-            LGLdataIM.c    \
-            LGLdataLT1.c   \
-            LGLdataLT2.c   \
-            lp2fem.c       \
-            pf_pade_exp.c  \
-            prjlp2fem.c
+SOURCES =   mxLGLdataFM.c    \
+            mxLGLdataIM.c    \
+            mxLGLdataLT1.c   \
+            mxLGLdataLT2.c   \
+            mxfem1d_FLT.c    \
+            mxfem1d_ILT.c    \
+            mxfem1d_F2L.c    \
+            mxfem1d_L2F.c    \
+            mxfem1d_PrjL2F.c \
+            mxfem1d_Norm2.c  \
+            gfilters.c       \
+            pf_pade_exp.c    
 
 
 TARGETS = $(SOURCES:%.c=$(BUILDDIR)/%.mexa64)

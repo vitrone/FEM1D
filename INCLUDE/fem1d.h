@@ -8,6 +8,7 @@
 #include "matlib.h"
 #include "debug.h"
 #include "ehandler.h"
+
 /*============================================================================+/
  |DATA STRUCTURES AND ENUMS
 /+============================================================================*/
@@ -27,163 +28,93 @@ typedef enum
 
 void fem1d_ref2mesh
 (
-    matlib_dv    xi,
+    matlib_xv    xi,
     matlib_index N,
-    double       x_l,
-    double       x_r,
-    matlib_dv*   x
+    matlib_real  x_l,
+    matlib_real  x_r,
+    matlib_xv*   x
 );
-/* forward legendre transformation or a truncated version of it         */ 
 
-void fem1d_DFLT
+/*============================================================================+/
+ | Legendre transformation routines
+ | Naming convention: fem1d_<data-type><function descriptor>
+ | X: Real data
+ | Z: Complex data
+/+============================================================================*/
+
+
+void fem1d_XFLT
 (
     const matlib_index N,
-    const matlib_dm    FM,
-          matlib_dv    u,
-          matlib_dv    U
+    const matlib_xm    FM,
+          matlib_xv    u,
+          matlib_xv    U
 );
 
 void fem1d_ZFLT
 (
     const matlib_index N,
-    const matlib_dm    FM,
+    const matlib_xm    FM,
           matlib_zv    u,
           matlib_zv    U
 );
 
-void fem1d_DILT
+void fem1d_XILT
 (
     const matlib_index N,
-    const matlib_dm    IM,
-          matlib_dv    U,
-          matlib_dv    u
+    const matlib_xm    IM,
+          matlib_xv    U,
+          matlib_xv    u
 );
 
 void fem1d_ZILT
 (
     const matlib_index N,
-    const matlib_dm    IM,
+    const matlib_xm    IM,
           matlib_zv    U,
           matlib_zv    u
 );
 
-void fem1d_DFLT2
+void fem1d_XFLT2
 (
     const matlib_index N,
-    const matlib_dm    FM,
-    const matlib_dm    u,
-          matlib_dm    U
+    const matlib_xm    FM,
+    const matlib_xm    u,
+          matlib_xm    U
 );
 void fem1d_ZFLT2
 (
     const matlib_index N,
-    const matlib_dm FM,
+    const matlib_xm FM,
           matlib_zm u,
           matlib_zm U
 );
-void fem1d_DILT2
+void fem1d_XILT2
 (
     const matlib_index N,
-    const matlib_dm IM,
-    const matlib_dm U,
-          matlib_dm u
+    const matlib_xm IM,
+    const matlib_xm U,
+          matlib_xm u
 );
 void fem1d_ZILT2
 (
     const matlib_index N,
-    const matlib_dm IM,
+    const matlib_xm IM,
           matlib_zm U,
           matlib_zm u
 );
 
-void fem_dflt
-(
-    const matlib_index   p,
-    const matlib_index   elem_n, 
-    const matlib_index   P, 
-    const double* FM,                      
-          double* u,                       
-          double* v                       
-);
-void fem_dilt
-(
-    const matlib_index   p,
-    const matlib_index   elem_n, 
-    const matlib_index   P, 
-    const double* IM,                              
-          double* u,                               
-          double* v                                
-);
-void fem_dflt2
-(
-    const matlib_index   p,
-    const matlib_index   elem_n, 
-    const matlib_index   P, 
-    const double* FM,               /* (p+1)-by-(P+1) matrix                  */
-          double* u,                /* (P*elem_n+1)-by-nu matrix              */
-          double* v,                /* (p+1)*elem_n-by-nu matrix              */
-    const matlib_index   nu
-);
-void fem_dilt2
-( 
-    const matlib_index   p, 
-    const matlib_index   elem_n, 
-    const matlib_index   P, 
-    const double* IM, 
-          double* u, 
-          double* v, 
-    const matlib_index   nu
-);
-
-void fem_dflt_ColMajor
-(
-    matlib_index p,
-    matlib_index elem_n, 
-    matlib_index P, 
-    double *FM, 
-    double *u, 
-    double *v
-);
-void fem_dilt_ColMajor
-(
-    matlib_index p,
-    matlib_index elem_n, 
-    matlib_index P, 
-    double *IM, 
-    double *u, 
-    double *v
-);
-void fem_dflt_ColMajor2
-(
-    matlib_index p,
-    matlib_index elem_n, 
-    matlib_index P, 
-    double *FM, 
-    double *u, 
-    double *v,
-    matlib_index nu
-);
-void fem_dilt_ColMajor2
-(
-    matlib_index p,
-    matlib_index elem_n, 
-    matlib_index P, 
-    double *IM, 
-    double *u, 
-    double *v, 
-    matlib_index nu
-);
 /*======================================================================*/
 
 /* 
  * Transformation from Legendre basis to FEM-basis
  *
  * */
-void fem1d_DF2L
+void fem1d_XF2L
 (
     const matlib_index p, 
-    const matlib_dv vb,
-          matlib_dv u
+    const matlib_xv    vb,
+          matlib_xv    u
 );
 void fem1d_ZF2L
 (
@@ -192,11 +123,11 @@ void fem1d_ZF2L
           matlib_zv u
 );
 
-void fem1d_DL2F
+void fem1d_XL2F
 (
     const matlib_index p, 
-    const matlib_dv u,
-          matlib_dv vb
+    const matlib_xv u,
+          matlib_xv vb
 );
 void fem1d_ZL2F
 (
@@ -205,35 +136,35 @@ void fem1d_ZL2F
           matlib_zv vb
 );
 
-void fem1d_dshapefunc2lp
+void fem1d_xshapefunc2lp
 (
     matlib_index p, 
-    matlib_index elem_n, 
-    double *v, 
-    double *b,
-    double *u
+    matlib_index N, 
+    matlib_real *v, 
+    matlib_real *b,
+    matlib_real *u
 );
 void fem1d_zshapefunc2lp
 (
-    matlib_index           p, 
-    matlib_index           elem_n, 
+    matlib_index    p, 
+    matlib_index    N, 
     matlib_complex* v,               
     matlib_complex* b,               
     matlib_complex* u                
 );
 
-void lp2fem1d_dshapefunc
+void lp2fem1d_xshapefunc
 (
     matlib_index p, 
-    matlib_index elem_n, 
-    double *u, 
-    double *v, 
-    double *b
+    matlib_index N, 
+    matlib_real *u, 
+    matlib_real *v, 
+    matlib_real *b
 );
 void lp2fem1d_zshapefunc
 (
     matlib_index p, 
-    matlib_index elem_n, 
+    matlib_index N, 
     matlib_complex *u, 
     matlib_complex *v, 
     matlib_complex *b
@@ -259,25 +190,25 @@ void lp2fem1d_zshapefunc
 #define _A10 0.17149858514250881925
 #define _A11 0.16222142113076254422
 
-void fem1d_dshapefunc2lp_2 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_3 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_4 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_5 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_6 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_7 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_8 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_9 ( matlib_index elem_n, double *v, double *b, double *u );
-void fem1d_dshapefunc2lp_10( matlib_index elem_n, double *v, double *b, double *u );
+void fem1d_xshapefunc2lp_2 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_3 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_4 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_5 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_6 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_7 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_8 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_9 ( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
+void fem1d_xshapefunc2lp_10( matlib_index N, matlib_real *v, matlib_real *b, matlib_real *u );
 
-void fem1d_zshapefunc2lp_2 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_3 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_4 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_5 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_6 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_7 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_8 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_9 ( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
-void fem1d_zshapefunc2lp_10( matlib_index elem_n, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_2 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_3 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_4 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_5 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_6 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_7 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_8 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_9 ( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
+void fem1d_zshapefunc2lp_10( matlib_index N, matlib_complex *v, matlib_complex *b, matlib_complex *u );
 
 /* Printed with precision 0.20f.*/
 #define _C10 6.16441400296897601407
@@ -298,25 +229,25 @@ void fem1d_zshapefunc2lp_10( matlib_index elem_n, matlib_complex *v, matlib_comp
 #define _D02 0.65465367070797708671
 #define _D01 0.31622776601683794118
 #define _D00 0.40824829046386307274
-void lp2fem1d_dshapefunc_2 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_3 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_4 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_5 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_6 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_7 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_8 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_9 ( matlib_index elem_n, double *u, double *v, double *b );
-void lp2fem1d_dshapefunc_10( matlib_index elem_n, double *u, double *v, double *b );
+void lp2fem1d_xshapefunc_2 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_3 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_4 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_5 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_6 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_7 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_8 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_9 ( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
+void lp2fem1d_xshapefunc_10( matlib_index N, matlib_real *u, matlib_real *v, matlib_real *b );
 
-void lp2fem1d_zshapefunc_2 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_3 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_4 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_5 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_6 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_7 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_8 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_9 ( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
-void lp2fem1d_zshapefunc_10( matlib_index elem_n, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_2 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_3 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_4 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_5 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_6 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_7 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_8 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_9 ( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
+void lp2fem1d_zshapefunc_10( matlib_index N, matlib_complex *u, matlib_complex *v, matlib_complex *b );
 /* Projection subroutines                                               */
 /*======================================================================*/
 /* Printed with precision 0.20f.*/
@@ -339,20 +270,20 @@ void lp2fem1d_zshapefunc_10( matlib_index elem_n, matlib_complex *u, matlib_comp
 #define _E08 0.01544965915531071841
 #define _F08 -0.01908487307420735773
 
-void fem1d_DPrjL2F
+void fem1d_XPrjL2F
 (
     matlib_index p,
-    matlib_dv u,
-    matlib_dv Pvb
+    matlib_xv    u,
+    matlib_xv    Pvb
 );
 
-void fem1d_dprjLP2FEM_ShapeFunc
+void fem1d_xprjLP2FEM_ShapeFunc
 (
     matlib_index p, 
-    matlib_index elem_n, 
-    double*      u, 
-    double*      Pv, 
-    double*      Pb
+    matlib_index N, 
+    matlib_real* u, 
+    matlib_real* Pv, 
+    matlib_real* Pb
 );
 
 void fem1d_ZPrjL2F
@@ -364,32 +295,32 @@ void fem1d_ZPrjL2F
 void fem1d_zprjLP2FEM_ShapeFunc
 (
     matlib_index    p, 
-    matlib_index    elem_n, 
+    matlib_index    N, 
     matlib_complex* u, 
-    matlib_complex* Pv,                     /* Vertex coefficients              */ 
-    matlib_complex* Pb                      /* Coefficients of bubble functions */ 
+    matlib_complex* Pv,              
+    matlib_complex* Pb               
 );
 
 
-void fem1d_dprjLP2FEM_ShapeFunc_2 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_3 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_4 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_5 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_6 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_7 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_8 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_9 ( matlib_index elem_n, double *u, double *Pv, double *Pb);
-void fem1d_dprjLP2FEM_ShapeFunc_10( matlib_index elem_n, double *u, double *Pv, double *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_2 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_3 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_4 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_5 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_6 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_7 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_8 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_9 ( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
+void fem1d_xprjLP2FEM_ShapeFunc_10( matlib_index N, matlib_real *u, matlib_real *Pv, matlib_real *Pb);
 
-void fem1d_zprjLP2FEM_ShapeFunc_2 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_3 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_4 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_5 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_6 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_7 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_8 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_9 ( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
-void fem1d_zprjLP2FEM_ShapeFunc_10( matlib_index elem_n, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_2 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_3 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_4 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_5 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_6 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_7 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_8 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_9 ( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
+void fem1d_zprjLP2FEM_ShapeFunc_10( matlib_index N, matlib_complex *u, matlib_complex *Pv, matlib_complex *Pb);
 /* Squared L2 norm                                                      */ 
 /*======================================================================*/
 /* Printed with precision 0.20f.*/
@@ -405,70 +336,70 @@ void fem1d_zprjLP2FEM_ShapeFunc_10( matlib_index elem_n, matlib_complex *u, matl
 #define _N9 0.10526315789473683626
 #define _N10 0.09523809523809523281
 
-double fem1d_DNorm2
+matlib_real fem1d_XNorm2
 (
     matlib_index p,
     matlib_index N,
-    matlib_dv    u
+    matlib_xv    u
 );
-double fem1d_ZNorm2
+matlib_real fem1d_ZNorm2
 (
     matlib_index p,
     matlib_index N,
     matlib_zv u
 );
 
-double fem1d_dlp_snorm2_d(matlib_index p, matlib_index elem_n, double *u);
-double fem1d_zlp_snorm2_d(matlib_index p, matlib_index elem_n, matlib_complex *u);
+matlib_real fem1d_xlp_snorm2_d(matlib_index p, matlib_index N, matlib_real *u);
+matlib_real fem1d_zlp_snorm2_d(matlib_index p, matlib_index N, matlib_complex *u);
 
-double fem1d_dlp_snorm2_d_2 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_3 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_4 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_5 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_6 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_7 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_8 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_9 ( matlib_index elem_n, double *u);
-double fem1d_dlp_snorm2_d_10( matlib_index elem_n, double *u);
+matlib_real fem1d_xlp_snorm2_d_2 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_3 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_4 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_5 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_6 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_7 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_8 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_9 ( matlib_index N, matlib_real *u);
+matlib_real fem1d_xlp_snorm2_d_10( matlib_index N, matlib_real *u);
 
-double fem1d_zlp_snorm2_d_2 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_3 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_4 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_5 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_6 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_7 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_8 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_9 ( matlib_index elem_n, matlib_complex *u);
-double fem1d_zlp_snorm2_d_10( matlib_index elem_n, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_2 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_3 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_4 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_5 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_6 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_7 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_8 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_9 ( matlib_index N, matlib_complex *u);
+matlib_real fem1d_zlp_snorm2_d_10( matlib_index N, matlib_complex *u);
 /*======================================================================*/
 
-double fem1d_ddot
+matlib_real fem1d_xdot
 ( 
     matlib_index l,                        /* Length of the vectors            */
-    double *x,                      /* vector of length l               */
-    double *y
+    matlib_real *x,                      /* vector of length l               */
+    matlib_real *y
 );
 matlib_complex fem1d_zdot
 ( 
-    matlib_index           l,
+    matlib_index    l,
     matlib_complex* x,
     matlib_complex* y
 );
-double fem1d_ddot2 ( matlib_index l, double *u, double *v);
-double fem1d_ddot3 ( matlib_index l, double *u, double *v);
-double fem1d_ddot4 ( matlib_index l, double *u, double *v);
-double fem1d_ddot5 ( matlib_index l, double *u, double *v);
-double fem1d_ddot6 ( matlib_index l, double *u, double *v);
-double fem1d_ddot7 ( matlib_index l, double *u, double *v);
-double fem1d_ddot8 ( matlib_index l, double *u, double *v);
-double fem1d_ddot9 ( matlib_index l, double *u, double *v);
-double fem1d_ddot10( matlib_index l, double *u, double *v);
-double fem1d_ddot11( matlib_index l, double *u, double *v);
-double fem1d_ddot12( matlib_index l, double *u, double *v);
-double fem1d_ddot13( matlib_index l, double *u, double *v);
-double fem1d_ddot14( matlib_index l, double *u, double *v);
-double fem1d_ddot15( matlib_index l, double *u, double *v);
-double fem1d_ddot16( matlib_index l, double *u, double *v);
+matlib_real fem1d_xdot2 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot3 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot4 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot5 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot6 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot7 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot8 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot9 ( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot10( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot11( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot12( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot13( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot14( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot15( matlib_index l, matlib_real *u, matlib_real *v);
+matlib_real fem1d_xdot16( matlib_index l, matlib_real *u, matlib_real *v);
 
 matlib_complex fem1d_zdot2( matlib_index l, matlib_complex *u, matlib_complex *v);
 matlib_complex fem1d_zdot3( matlib_index l, matlib_complex *u, matlib_complex *v);
@@ -486,175 +417,115 @@ matlib_complex fem1d_zdot14( matlib_index l, matlib_complex *u, matlib_complex *
 matlib_complex fem1d_zdot15( matlib_index l, matlib_complex *u, matlib_complex *v);
 matlib_complex fem1d_zdot16( matlib_index l, matlib_complex *u, matlib_complex *v);
 
-/*======================================================================*/
+/*============================================================================+/
+ | Building Global Mass Matrix 
+/+============================================================================*/
 void fem1d_quadM
 (
-    matlib_dv  quadW,
-    matlib_dm  IM,
-    matlib_dm* Q
+    matlib_xv  quadW,
+    matlib_xm  IM,
+    matlib_xm* Q
 );
 void fem1d_MEMI
 (
-    matlib_index      p,
-    matlib_dv* q
+    matlib_index p,
+    matlib_xv*   q
 );
 void fem1d_GMMSparsity
 /* Determine the sparsity structure in CSR format */ 
 (
-    matlib_index            p,
-    matlib_index            N,                        
-    matlib_index*           row,                     
-    matlib_index*           col                     
+    matlib_index  p,
+    matlib_index  N,                        
+    matlib_index* row,                     
+    matlib_index* col                     
 );
 
-void fem1d_DCSRGMM
+void fem1d_XCSRGMM
 /* Double CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index     p,
-    matlib_index     N,                        
-    matlib_dv q,
-    matlib_index*    row,                     
-    matlib_index*    col,                     
-    double*   ugpmm                   
+    matlib_index  p,
+    matlib_index  N,                        
+    matlib_xv     q,
+    matlib_index* row,                     
+    matlib_index* col,                     
+    matlib_real*  ugpmm                   
                                     
 );
 
-void fem1d_DCSRGMM2
+void fem1d_XCSRGMM2
 /* Double CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index     p,
-    matlib_index     N,                        
-    matlib_dm q,
-    double**  ugpmm_p              
+    matlib_index  p,
+    matlib_index  N,                        
+    matlib_xm     q,
+    matlib_real** ugpmm_p              
                                     
 );
 
 void fem1d_ZCSRGMM
 /* Complex CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index            p,
-    matlib_index            N,                        
-    matlib_zv        q,
-    matlib_index*           row,                     
-    matlib_index*           col,                     
-    matlib_complex*  ugpmm                   
+    matlib_index    p,
+    matlib_index    N,                        
+    matlib_zv       q,
+    matlib_index*   row,                     
+    matlib_index*   col,                     
+    matlib_complex* ugpmm                   
                                     
 );
 
 void fem1d_ZCSRGMM2
 /* Double CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index           p,
-    matlib_index           N,                        
-    matlib_zm       q,
+    matlib_index     p,
+    matlib_index     N,                        
+    matlib_zm        q,
     matlib_complex** ugpmm_p                
 );
 
 
-void fem1d_DSparseMGMM
+void fem1d_xm_sparse_GMM
 /* Complex - Assemble Global Mass Matrix*/ 
 (
-    matlib_index            p,
-    matlib_dm        Q,
-    matlib_dv        phi,
-    matlib_dsparsem* M
+    matlib_index      p,
+    matlib_xm         Q,
+    matlib_xv         phi,
+    matlib_xm_sparse* M
 );
-void fem1d_ZSparseMGMM
+
+void fem1d_zm_sparse_GMM
 /* Complex - Assemble Global Mass Matrix*/ 
 (
-    matlib_index            p,
-    matlib_dm        Q,
-    matlib_zv        phi,
-    matlib_zsparsem* M
+    matlib_index      p,
+    matlib_xm         Q,
+    matlib_zv         phi,
+    matlib_zm_sparse* M
 );
 
-void fem1d_DNSparseMGMM
-/* Double - Assemble Global Mass Matrix*/ 
+void fem1d_xm_nsparse_GMM
+/* Real - Assemble Global Mass Matrix*/ 
 (
-    matlib_index             p,
-    matlib_index             N,
-    matlib_index             nsparse,
-    matlib_dm         Q,
-    matlib_dm*        phi,
-    matlib_dm*        q,
-    matlib_dnsparsem* M,
-    FEM1D_OP_GMM      op_enum /* option */ 
+    matlib_index       p,
+    matlib_index       N,
+    matlib_index       nsparse,
+    matlib_xm          Q,
+    matlib_xm*         phi,
+    matlib_xm*         q,
+    matlib_xm_nsparse* M,
+    FEM1D_OP_GMM       op_enum /* option */ 
 );
 
-void fem1d_ZNSparseMGMM
-/* ZNSparseM - Global Mass Matrix */ 
+void fem1d_zm_nsparse_GMM
+/* Complex - Global Mass Matrix */ 
 (
-    matlib_index             p,
-    matlib_index             N,
-    matlib_index             nsparse,
-    matlib_dm         Q,
-    matlib_zm*        phi,
-    matlib_zm*        q,
-    matlib_znsparsem* M,
-    FEM1D_OP_GMM      op_enum /* option */ 
+    matlib_index       p,
+    matlib_index       N,
+    matlib_index       nsparse,
+    matlib_xm          Q,
+    matlib_zm*         phi,
+    matlib_zm*         q,
+    matlib_zm_nsparse* M,
+    FEM1D_OP_GMM       op_enum /* option */ 
 );
 
-/*============================================================================*/
-
-void fem1d_gmm_ind
-/* create indcies for the global mass matrix                            */ 
-(
-    matlib_index p,                        /* Highest degree of  polynomials   */
-    matlib_index N,                        /* Number of elements               */
-    matlib_index *row,                     /* row entries for nonzero elements */
-    matlib_index *col                      /* col entries for nonzero elements */
-);
-void fem1d_gmm
-/* create global mass matrix                                            */ 
-(
-    matlib_index p,                        /* Highest degree of  polynomials   */
-    matlib_index N,                        /* Number of elements               */
-    matlib_index P,                        /* Number of LGL points for         *
-                                     * integration: (P+1)               */
-    double *M,                      /* (P+1)-by-(p+1) matrix containing *
-                                     * values of the basis functions    */
-    double *pot,                    /* Values of potential on LGL points*/
-    double *ugpmm,                  /* Upper triangular matrix including*
-                                     * the diagonal                     */
-    double *lgpmm                   /* Lower triangualr matrix excluding*
-                                     * the diagonal                     */
-);
-void fem1d_gmm2
-/* create global mass matrix                                            */ 
-(
-    matlib_index p,                        /* Highest degree of  polynomials   */
-    matlib_index N,                        /* Number of elements               */
-    matlib_index P,                        /* Number of LGL points for         *
-                                     * integration: (P+1)               */
-    double *M,                      /* (P+1)-by-(p+1) matrix containing *
-                                     * values of the basis functions    */
-    double *pot,                    /* Values of potential on LGL points*/
-    matlib_index *row,                     /* row entries for nonzero elements */
-    matlib_index *col,                     /* col entries for nonzero elements */
-    double *ugpmm,                  /* Upper triangular matrix including*
-                                     * the diagonal                     */
-    double *lgpmm                   /* Lower triangualr matrix excluding*
-                                     * the diagonal                     */
-);
-void fem1d_ugpmm_CSR
-(
-    matlib_index   p,                        
-    matlib_index   N,                        
-    matlib_index   P,                        
-    double* M,                      
-    double* pot,                    
-    matlib_index * row,                     
-    matlib_index * col,                     
-    double* ugpmm                   
-);
-void fem1d_gpmm_COO
-(
-    matlib_index   N,
-    matlib_index * row,
-    matlib_index * col,
-    double* ugpmm,
-    matlib_index * row1,
-    matlib_index * col1,
-    double* gpmm
-);
 #endif

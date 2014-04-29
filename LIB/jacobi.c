@@ -11,7 +11,7 @@
 /*============================================================================*/
 void jacobi_calcjp
 (
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double x,
@@ -60,7 +60,7 @@ void jacobi_calcjp
 
 void jacobi_find_zeros
 ( 
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double *zeros, 
@@ -191,7 +191,7 @@ void jacobi_find_zeros
 
 void CalcJP
 (
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double x,
@@ -237,7 +237,7 @@ void CalcJP
 
 void find_zeros
 ( 
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double *zeros, 
@@ -331,7 +331,7 @@ void find_zeros
 void diag_pade_pf               
 /* Partial fraction resolution of diagonal Pade approximants            */ 
 ( 
-    int n,                          /* Order of diagonal Pade approx.   */
+    matlib_index n,                          /* Order of diagonal Pade approx.   */
     double frac_pow,                /* $|\alpha|<1$ in $s^{\alpha}$     */
     double *pfNUM_coeff, 
     double *pfDENOM_coeff,          /* Numerator/Denominator coeff.     * 

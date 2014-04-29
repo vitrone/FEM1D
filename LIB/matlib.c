@@ -37,8 +37,6 @@
  |                    External Module Includes                                |
  |                                                                            |
  +============================================================================*/
-
-#define MKL_Complex16 matlib_complex 
 #include "mkl.h"
 #include "mkl_types.h"
 #include "mkl_spblas.h"
@@ -49,7 +47,7 @@
 
 void matlib_create_zv
 (
-    matlib_index         length,
+    matlib_index  length,
     matlib_zv*    v,
     MATLIB_VECT_T type_enum
 )
@@ -66,10 +64,11 @@ void matlib_create_zv
                    strerror(errno), length);
     }
 }
-void matlib_create_tv
+
+void matlib_create_xv
 (
-    matlib_index         length,
-    MATLIB_TV*    v,
+    matlib_index  length,
+    matlib_xv*    v,
     MATLIB_VECT_T type_enum
 )
 {
@@ -78,27 +77,7 @@ void matlib_create_tv
     v->type = type_enum;
 
     errno  = 0;
-    v->elem_pr = calloc( length, sizeof(double));
-    v->elem_pi = calloc( length, sizeof(double));
-    if ((v->elem_pr == NULL) && (v->elem_pi == NULL))
-    {
-        term_exec( "%s: initialization error: vector of length %d", 
-                   strerror(errno), length);
-    }
-}
-void matlib_create_dv
-(
-    matlib_index         length,
-    matlib_dv*    v,
-    MATLIB_VECT_T type_enum
-)
-{
-    assert(length>0);
-    v->len  = length;
-    v->type = type_enum;
-
-    errno  = 0;
-    v->elem_p = calloc( length, sizeof(double));
+    v->elem_p = calloc( length, sizeof(matlib_real));
     if (v->elem_p == NULL)
     {
         term_exec( "%s: initialization error: vector of length %d", 
@@ -108,8 +87,8 @@ void matlib_create_dv
 /*============================================================================*/
 void matlib_create_zm
 ( 
-    matlib_index        lenc,
-    matlib_index        lenr,
+    matlib_index lenc,
+    matlib_index lenr,
     matlib_zm*   M,
     MATLIB_ORDER order_enum,
     MATLIB_TRANSPOSE trans_enum
@@ -133,11 +112,11 @@ void matlib_create_zm
     }
 }
 
-void matlib_create_tm
+void matlib_create_xm
 ( 
-    matlib_index        lenc,
-    matlib_index        lenr,
-    MATLIB_TM*   M,
+    matlib_index lenc,
+    matlib_index lenr,
+    matlib_xm*   M,
     MATLIB_ORDER order_enum,
     MATLIB_TRANSPOSE trans_enum
 )
@@ -151,34 +130,7 @@ void matlib_create_tm
     M->op    = trans_enum;
 
     errno  = 0;
-    M->elem_pr = calloc( lenc * lenr, sizeof(double));
-    M->elem_pi = calloc( lenc * lenr, sizeof(double));
-    
-    if ((M->elem_pr == NULL) && (M->elem_pi == NULL))
-    {
-        term_exec( "%s: initialization error: matrix of size %d-by-%d", 
-                   strerror(errno), lenc, lenr);
-    }
-}
-void matlib_create_dm
-( 
-    matlib_index        lenc,
-    matlib_index        lenr,
-    matlib_dm*   M,
-    MATLIB_ORDER order_enum,
-    MATLIB_TRANSPOSE trans_enum
-)
-{
-    assert(lenc>0);
-    assert(lenr>0);
-
-    M->lenc = lenc;
-    M->lenr = lenr;
-    M->order = order_enum;
-    M->op    = trans_enum;
-
-    errno  = 0;
-    M->elem_p = calloc( lenc * lenr, sizeof(double));
+    M->elem_p = calloc( lenc * lenr, sizeof(matlib_real));
     
     if (M->elem_p == NULL)
     {
@@ -196,73 +148,33 @@ void matlib_create_dm
  * C(i,j) = *(pC+2*i+j)
  *
  * */ 
-void matlib_create_ZTV
-(
-    MATLIB_TV  A,
-    matlib_zv* B
-)
-{
-    matlib_create_zv(A.len, B, A.type);
-    matlib_complex* ptr = B->elem_p;
-    for (ptr = B->elem_p; ptr< B->elem_p+B->len; ptr++)
-    {
-        /* Complex pointers do not need to be dereferenced twice */ 
-        ptr[0] = *A.elem_pr;
-        ptr[1] = *A.elem_pi;
-        A.elem_pr++;
-        A.elem_pi++;
-    }
-}
-void matlib_create_TZV
-(
-    matlib_zv  A,
-    MATLIB_TV* B
-)
-{
-    matlib_create_tv(A.len, B, A.type);
-    matlib_complex* ptr = A.elem_p;
-    for (ptr = A.elem_p; ptr< A.elem_p+A.len; ptr++)
-    {
-        *B->elem_pr = ptr[0];
-        *B->elem_pi = ptr[1];
-        (B->elem_pr)++;
-        (B->elem_pi)++;
-    }
-}
-
 
 /*============================================================================+/
  |BLAS Level I Routines
 /+============================================================================*/
 
-double matlib_dnrm2(matlib_dv x)
+matlib_real matlib_xnrm2(matlib_xv x)
 {
     matlib_index incx = 1;
     return cblas_dnrm2(x.len, x.elem_p, incx);
 
 }
-double matlib_znrm2(matlib_zv x)
+
+matlib_real matlib_znrm2(matlib_zv x)
 {
     matlib_index incx = 1;
     return cblas_dznrm2(x.len, x.elem_p, incx);
 
 }
-double matlib_tnrm2(MATLIB_TV x)
-{
-    matlib_index incx = 1;
-    double a = cblas_dnrm2(x.len, x.elem_pr, incx);
-    double b = cblas_dnrm2(x.len, x.elem_pi, incx);
-    return sqrt(a*a+b*b);
-}
 /*============================================================================*/
 
-void matlib_daxpy
+void matlib_xaxpy
 (
-    const double    alpha,
-    const matlib_dv x,
-          matlib_dv y
+    const matlib_real alpha,
+    const matlib_xv   x,
+          matlib_xv   y
 )
-/* D A X P Y
+/* A X P Y
  * y <- a * x + y
  *
  * */
@@ -277,46 +189,14 @@ void matlib_daxpy
     debug_exit("%s", "");
 
 }
-void matlib_taxpy
-(
-    const matlib_complex alpha,
-    const MATLIB_TV      x,
-          MATLIB_TV      y
-)
-/* D A X P Y
- * (a+Ib) (x.r + I x.i) = a*x.r-b*x.i + I (a*x.i+b*x.r)
- * y.r <- a*x.r - b*x.i + y.r
- * y.i <- a*x.i + b*x.r + y.i
- *
- * */
-{
-    debug_enter( "alpha: % 0.16f %+0.16f, length of vectors: %d, %d",
-                 creal(alpha), cimag(alpha), x.len, y.len);
-    matlib_index incx = 1;
-    matlib_index incy = 1;
 
-    assert(x.len == y.len);
-    
-    double a = creal(alpha); 
-    double b = cimag(alpha);
-
-    cblas_daxpy(x.len,  a, x.elem_pr, incx, y.elem_pr, incy);
-    cblas_daxpy(x.len, -b, x.elem_pi, incx, y.elem_pr, incy);
-
-    cblas_daxpy(x.len, a, x.elem_pi, incx, y.elem_pi, incy);
-    cblas_daxpy(x.len, b, x.elem_pr, incx, y.elem_pi, incy);
-
-
-    debug_exit("%s", "");
-
-}
 void matlib_zaxpy
 (
     const matlib_complex alpha,
     const matlib_zv      x,
           matlib_zv      y
 )
-/* Z A X P Y
+/* A X P Y
  * y <- a * x + y
  *
  * */
@@ -339,7 +219,7 @@ void matlib_zaxpby
     const matlib_complex beta,
           matlib_zv      y
 )
-/* Z A X P B Y
+/* A X P B Y
  * y <- a * x + b * y
  *
  * */
@@ -362,12 +242,12 @@ void matlib_zaxpby
 }
 /*============================================================================*/
 
-double matlib_ddot
+matlib_real matlib_xdot
 (
-    const matlib_dv x,
-    const matlib_dv y
+    const matlib_xv x,
+    const matlib_xv y
 )
-/* D DOT
+/* DOT
  * y <- a * x + y
  *
  * */
@@ -377,7 +257,7 @@ double matlib_ddot
     matlib_index incy = 1;
 
     assert(x.len == y.len);
-    double r = cblas_ddot(x.len, x.elem_p, incx, y.elem_p, incy);
+    matlib_real r = cblas_ddot(x.len, x.elem_p, incx, y.elem_p, incy);
     debug_exit("dot product: % 0.16f", r);
     return r;
 }
@@ -385,16 +265,16 @@ double matlib_ddot
 /*============================================================================+/
  |BLAS Level II Routines
 /+============================================================================*/
-void matlib_dgemv
+void matlib_xgemv
 (
-    const double    alpha,
-    const matlib_dm A, 
-    const matlib_dv u,
-    const double    beta,
-          matlib_dv v
+    const matlib_real alpha,
+    const matlib_xm   A, 
+    const matlib_xv   u,
+    const matlib_real beta,
+          matlib_xv   v
 )
 /* 
- * D GE M V
+ * GE M V
  * v <-- alpha A * u + beta * v
  *
  * */
@@ -468,7 +348,7 @@ void matlib_zgemv
           matlib_zv      v
 )
 /* 
- * Z GE M V
+ * GE M V
  * v <-- alpha A * u + beta * v
  *
  * */
@@ -546,16 +426,16 @@ void matlib_zgemv
 }
 
 
-void matlib_dcsrsymv
+void matlib_xcsrsymv
 /* Double CSR Symmetric Matrix-Vector */ 
 (
-    const MATLIB_UPLO     uplo_enum,
-          matlib_dsparsem A, 
-    const matlib_dv       u,
-          matlib_dv       v
+    const MATLIB_UPLO      uplo_enum,
+          matlib_xm_sparse A, 
+    const matlib_xv        u,
+          matlib_xv        v
 )
 /* 
- * D GE M V
+ * A: sparse matrix
  * v <-- alpha A * u + beta * v
  *
  * */
@@ -598,10 +478,10 @@ void matlib_dcsrsymv
 void matlib_zcsrsymv
 /* Double CSR Symmetric Matrix-Vector */ 
 (
-    const MATLIB_UPLO     uplo_enum,
-          matlib_zsparsem A, 
-    const matlib_zv       u,
-          matlib_zv       v
+    const MATLIB_UPLO      uplo_enum,
+          matlib_zm_sparse A, 
+    const matlib_zv        u,
+          matlib_zv        v
 )
 /* 
  * Z GE M V
@@ -649,16 +529,16 @@ void matlib_zcsrsymv
 /*============================================================================+/
  |BLAS Level III Routines
 /+============================================================================*/
-void matlib_dgemm
+void matlib_xgemm
 (
-    const double    alpha,
-    const matlib_dm A, 
-    const matlib_dm B, 
-    const double    beta,
-          matlib_dm C
+    const matlib_real alpha,
+    const matlib_xm   A, 
+    const matlib_xm   B, 
+    const matlib_real beta,
+          matlib_xm   C
 )
 /* 
- * D GE M M
+ * GE M M
  * C <-- alpha A * B + beta * C
  *
  * */
@@ -902,4 +782,5 @@ void matlib_zgemm
 
     debug_exit("%s", "");
 }
+/*============================================================================*/
 

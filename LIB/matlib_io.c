@@ -18,7 +18,7 @@
 
 /*============================================================================*/
 
-void matlib_dmwrite_csv(char* file_name, matlib_dm M)
+void matlib_xmwrite_csv(char* file_name, matlib_xm M)
 {
     matlib_index i, j, col_st, row_st;
     if(M.order == MATLIB_COL_MAJOR)
@@ -77,11 +77,11 @@ void matlib_zmwrite_csv(char* file_name, matlib_zm M)
     fclose(fp);
 }
 
-void matlib_dvwrite_csv
+void matlib_xvwrite_csv
 (
     char*        file_name, 
     matlib_index n,
-    matlib_dv    v[n]
+    matlib_xv    v[n]
 )
 {
     matlib_index i, j;
@@ -119,11 +119,11 @@ void matlib_zvwrite_csv
     fclose(fp);
 }
 
-void matlib_dzvwrite_csv
+void matlib_xzvwrite_csv
 (
     char*        file_name, 
     matlib_index m,
-    matlib_dv    u[m],
+    matlib_xv    u[m],
     matlib_index n,
     matlib_zv    v[n]
 )

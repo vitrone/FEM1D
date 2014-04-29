@@ -17,7 +17,7 @@
 
 void jacobi_calcjp
 (
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double x,
@@ -30,7 +30,7 @@ void jacobi_calcjp
 
 void jacobi_find_zeros
 ( 
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double *zeros, 
@@ -48,7 +48,7 @@ void jacobi_find_zeros
 
 void CalcJP
 ( 
-    int n, 
+    matlib_index n, 
     double a, 
     double b, 
     double x, 
@@ -57,7 +57,7 @@ void CalcJP
     double E[n-1], 
     double *JP
 );
-void find_zeros( int n, double a, double b, double *zeros, double tol);
+void find_zeros( matlib_index n, double a, double b, double *zeros, double tol);
 /************************************************************************
  *                                                                      *
  * Finds the $n$-th order Pade approximation of $s^{\alpha},|\alpha|<1$ *
@@ -68,7 +68,7 @@ void find_zeros( int n, double a, double b, double *zeros, double tol);
  ************************************************************************/
 void diag_pade_pf
 ( 
-    int order, 
+    matlib_index order, 
     double frac_pow, 
     double *pfNOM_coeff, 
     double *pfDENOM_coeff, 

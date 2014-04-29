@@ -29,11 +29,18 @@ INCLUDES = -I../INCLUDE  -I$(MKLROOT)/include
 # CFLAG is used for the implicit rule to generate object files for C
 # $(CC) -c $(CFLAGS)
 # use -save-temps to see the preprocess effects in .i files
-CFLAGS = -ansi -D_GNU_SOURCE  -fexceptions -fPIC  -O2 \
-         -fno-omit-frame-pointer -pthread -std=c99 \
-         $(INCLUDES) 
+#
+# Machine dependent options
+MACH_DEP_OPT = -march=native
+# Optimization options, -Ofast enables all -03 level options 
+OPTIMIZE = -Ofast -funroll-all-loops
 
-LDFLAGS = -pthread -lm -L../BUILD -lfem1d -L$(MKL_PATH) $(MKL_LIBS) -lcunit
+CFLAGS = $(INCLUDES) -ansi -D_GNU_SOURCE -fexceptions -fPIC  \
+	 $(MACH_DEP_OPT) $(OPTIMIZE)                          \
+         -fno-omit-frame-pointer -std=c99
+
+LDFLAGS = -L../BUILD -L$(MKL_PATH) $(MKL_LIBS) -lpthread -lm -lcunit -lfem1d -lmkl_rt
+
 SOURCES = CUnit_matrix.c   \
           CUnit_legendre.c \
           CUnit_jacobi.c   \
@@ -56,10 +63,10 @@ TARGETS = $(SOURCES:%.c=$(TSTBIN)/%)
 all : bin_dir $(TARGETS) 
 
 bin_dir:
-	mkdir -p $(TSTBIN)
+	@mkdir -p $(TSTBIN)
 
 $(TSTBIN)/% : $(TSTBIN)/%.o
-	echo "Building binary files..."
+	@echo "Building binary files..."
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
 
 $(TSTBIN)/%.o : %.c

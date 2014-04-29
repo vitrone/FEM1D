@@ -11,107 +11,102 @@
 
 /*============================================================================*/
 
-double Legendre_LGL( double x, int n);
+matlib_real Legendre_LGL( matlib_real x, matlib_index n);
 
 void CalcLP
 ( 
-    int n, 
-    double *LP, 
-    double x, 
-    double C[n-1],
-    double D[n-1]
+    matlib_index n, 
+    matlib_real* LP, 
+    matlib_real  x, 
+    matlib_real  C[n-1],
+    matlib_real  D[n-1]
 );
 
 void find_Gauss_points
 ( 
     matlib_index n, 
-    double tol, 
-    double* zeros
+    matlib_real tol, 
+    matlib_real* zeros
 );
 
 void find_LGL_points
 ( 
     matlib_index n, 
-    double tol, 
-    double* zeros, 
-    double* quadW,
-    double *gzeros
+    matlib_real  tol, 
+    matlib_real* zeros, 
+    matlib_real* quadW,
+    matlib_real* gzeros
 );
 
 void backward_transform_matrix
 (
-    const matlib_index   P,            
-    const matlib_index   p,            
-    const double* x,          
-          double* pILTM
+    const matlib_index P,            
+    const matlib_index p,            
+    const matlib_real* x,          
+          matlib_real* pILTM
 );
 void forward_transform_matrix
 (                                                                 
     const matlib_index   p,            
-    const double* zeros,      
-          double* pFLTM
+    const matlib_real* zeros,      
+          matlib_real* pFLTM
 );
 
 void forward_transform_matrix2
 (
-    const matlib_index   p,                        
-    const matlib_index   P,                        
-    const double* zeros,                  
-          double* pFLTM                   
+    const matlib_index p,                        
+    const matlib_index P,                        
+    const matlib_real* zeros,                  
+          matlib_real* pFLTM                   
 );
 
 /*======================================================================*/
-/************************************************************************
- *                                                                      *
- * Column major version of the above functions for MATLAB               *
- *                                                                      *
- ************************************************************************/
 void backward_transform_matrix_colmajor
 ( 
     matlib_index P, 
     matlib_index p, 
-    double *x, 
-    double *pILTM
+    matlib_real* x, 
+    matlib_real* pILTM
 );
 void forward_transform_matrix_colmajor
 ( 
     matlib_index p, 
-    double *zeros, 
-    double *pFLTM
+    matlib_real* zeros, 
+    matlib_real* pFLTM
 );
 void forward_transform_matrix2_colmajor
 ( 
     matlib_index p, 
     matlib_index P, 
-    double *zeros, 
-    double *pFLTM                   /* (p+1)-by-(P+1) matrix, col. major*/
+    matlib_real* zeros, 
+    matlib_real* pFLTM 
 );
 /*============================================================================*/
 
 void legendre_LGLdataLT1
 ( 
-    const matlib_index      p, 
-    const double     tol,
-          matlib_dv* zeros,
-          matlib_dv* quadW
+    const matlib_index p, 
+    const matlib_real  tol,
+          matlib_xv*   zeros,
+          matlib_xv*   quadW
 );
 void legendre_LGLdataLT2
 ( 
-    const matlib_index      p, 
-    const double     tol,
-          matlib_dv* zeros,
-          matlib_dv* quadW,
-          matlib_dm* FM,
-          matlib_dm* IM
+    const matlib_index p, 
+    const matlib_real  tol,
+          matlib_xv*   zeros,
+          matlib_xv*   quadW,
+          matlib_xm*   FM,
+          matlib_xm*   IM
 );
 void legendre_LGLdataFM
 ( 
-    const matlib_dv xi,
-          matlib_dm FM
+    const matlib_xv xi,
+          matlib_xm FM
 );
 void legendre_LGLdataIM
 ( 
-    const matlib_dv xi,
-          matlib_dm IM
+    const matlib_xv xi,
+          matlib_xm IM
 );
 #endif

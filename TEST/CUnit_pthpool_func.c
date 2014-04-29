@@ -13,7 +13,7 @@
 #include "mkl.h"
 #include "omp.h"
 
-//#define NDEBUG
+#define NDEBUG
 
 #include "legendre.h"
 #include "fem1d.h"
@@ -26,13 +26,14 @@
 #include <CUnit/Basic.h>
 #include <CUnit/TestDB.h>
 
-static const double TOL = 1e-9;
+static const matlib_real TOL = 1e-9;
 
 /*============================================================================*/
 int init_suite(void)
 {
       return 0;
 }
+
 int clean_suite(void)
 {
       return 0;
@@ -42,12 +43,12 @@ int clean_suite(void)
 
 void serial_Gaussian
 (
-    matlib_dv x,
+    matlib_xv x,
     matlib_zv u
 )
 {
     debug_enter("%s", "");
-    double *xptr;
+    matlib_real *xptr;
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
         *(u.elem_p) = cexp(-(1.0+1.0*I)**xptr**xptr);
@@ -63,7 +64,7 @@ void* thfunc_Gaussian(void* mp)
     debug_enter("%s", "");
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
-    matlib_dv x = *((matlib_dv*) (ptr->shared_data[0]));
+    matlib_xv x = *((matlib_xv*) (ptr->shared_data[0]));
     matlib_zv u = *((matlib_zv*) (ptr->shared_data[1]));
 
     matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
@@ -87,7 +88,7 @@ void test_pfunc(void)
 {
 
     struct timespec tb, te;
-    double dn;
+    matlib_real dn;
     
     START_TIMMING(tb);
 
@@ -97,15 +98,15 @@ void test_pfunc(void)
     pthpool_create_threads(num_threads, mp);
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
     matlib_index p = 4;
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( p, TOL, &xi, &quadW);
 
     matlib_index N = 2000;
-    matlib_dv x;
+    matlib_xv x;
     fem1d_ref2mesh (xi, N, x_l, x_r, &x);
     debug_body("length of x: %d", x.len);
     
@@ -131,16 +132,16 @@ void test_pfunc(void)
     GET_DURATION(tb, te, dn);
     debug_print("parallel time[msec]: %0.4f", dn);
 
-    double norm_actual = matlib_znrm2(u_serial);
+    matlib_real norm_actual = matlib_znrm2(u_serial);
     matlib_zaxpy(-1.0, u_serial, u_parallel);
-    double e_relative = matlib_znrm2(u_parallel)/norm_actual;
+    matlib_real e_relative = matlib_znrm2(u_parallel)/norm_actual;
     debug_body("Relative error: % 0.16g", e_relative);
     
     CU_ASSERT_TRUE(e_relative<TOL);
 
-    matlib_free((void*)x.elem_p);
-    matlib_free((void*)u_serial.elem_p);
-    matlib_free((void*)u_parallel.elem_p);
+    matlib_free(x.elem_p);
+    matlib_free(u_serial.elem_p);
+    matlib_free(u_parallel.elem_p);
     
     debug_body("%s", "signal threads to exit!");
     pthpool_destroy_threads(num_threads, mp);

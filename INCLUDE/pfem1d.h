@@ -12,12 +12,12 @@
 /*============================================================================+/
  |DATA STRUCTURES AND ENUMS
 /+============================================================================*/
-void pfem1d_DFLT
+void pfem1d_XFLT
 (
     const matlib_index    N,
-    const matlib_dm       FM,
-          matlib_dv       u,
-          matlib_dv       U,
+    const matlib_xm       FM,
+          matlib_xv       u,
+          matlib_xv       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
@@ -25,19 +25,19 @@ void pfem1d_DFLT
 void pfem1d_ZFLT
 (
     const matlib_index    N,
-    const matlib_dm       FM,
+    const matlib_xm       FM,
           matlib_zv       u,
           matlib_zv       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
 
-void pfem1d_DILT
+void pfem1d_XILT
 (
     const matlib_index    N,
-    const matlib_dm       IM,
-          matlib_dv       U,
-          matlib_dv       u,
+    const matlib_xm       IM,
+          matlib_xv       U,
+          matlib_xv       u,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
@@ -45,36 +45,36 @@ void pfem1d_DILT
 void pfem1d_ZILT
 (
     const matlib_index    N,
-    const matlib_dm       IM,
+    const matlib_xm       IM,
           matlib_zv       U,
           matlib_zv       u,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
 
-void pfem1d_DFLT2
+void pfem1d_XFLT2
 (
     const matlib_index    N,
-    const matlib_dm       FM,
-          matlib_dm       u,
-          matlib_dm       U,
+    const matlib_xm       FM,
+          matlib_xm       u,
+          matlib_xm       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
 void pfem1d_ZFLT2
 (
     const matlib_index    N,
-    const matlib_dm       FM,
+    const matlib_xm       FM,
           matlib_zm       u,
           matlib_zm       U,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
-void pfem1d_DF2L
+void pfem1d_XF2L
 (
     const matlib_index p, 
-    const matlib_dv    vb,
-          matlib_dv    u,
+    const matlib_xv    vb,
+          matlib_xv    u,
           matlib_index    num_threads,
           pthpool_data_t* mp
 );
@@ -88,11 +88,11 @@ void pfem1d_ZF2L
           pthpool_data_t* mp
 );
 
-void pfem1d_DPrjL2F
+void pfem1d_XPrjL2F
 (
     matlib_index    p,
-    matlib_dv       u,
-    matlib_dv       Pvb,
+    matlib_xv       u,
+    matlib_xv       Pvb,
     matlib_index    num_threads,
     pthpool_data_t* mp
 );
@@ -106,16 +106,16 @@ void pfem1d_ZPrjL2F
     pthpool_data_t* mp
 );
 
-double pfem1d_DNorm2
+matlib_real pfem1d_XNorm2
 (
     matlib_index    p,
     matlib_index    N,
-    matlib_dv       u,
+    matlib_xv       u,
     matlib_index    num_threads,
     pthpool_data_t* mp
 );
 
-double pfem1d_ZNorm2
+matlib_real pfem1d_ZNorm2
 (
     matlib_index    p,
     matlib_index    N,

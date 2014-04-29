@@ -19,6 +19,7 @@
 #include "mkl.h"
 
 #define NDEBUG
+#define MATLIB_DTRACE_DATA
 
 #include "legendre.h"
 #include "fem1d.h"
@@ -27,7 +28,7 @@
 #include "assert.h"
 
 static const double TOL = 1e-9;
-#define MAX_NUM_CPU 7
+
 /*============================================================================*/
 void write_dm(char* file_name, matlib_dm M)
 {
@@ -166,7 +167,7 @@ void test_pfem1d_DFLT
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f, parallel: %0.16f", 
@@ -176,7 +177,7 @@ void test_pfem1d_DFLT
             //    matlib_daxpy(-1.0, U, V);
             //    e_relative = matlib_dnrm2(V)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
 
             
         }
@@ -287,7 +288,7 @@ void test_pfem1d_DF2L
             parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f, parallel: %0.16f", 
@@ -297,7 +298,7 @@ void test_pfem1d_DF2L
             //    matlib_daxpy(-1.0, U, V);
             //    e_relative = matlib_dnrm2(V)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -410,7 +411,7 @@ void test_pfem1d_DPrjL2F
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<Pvb1.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f, parallel: %0.16f", 
@@ -420,7 +421,7 @@ void test_pfem1d_DPrjL2F
             //    matlib_daxpy(-1.0, Pvb1, Pvb2);
             //    e_relative = matlib_dnrm2(Pvb2)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -529,7 +530,7 @@ void test_pfem1d_DNorm2
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<Pvb1.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f, parallel: %0.16f", 
@@ -539,7 +540,7 @@ void test_pfem1d_DNorm2
             //    matlib_daxpy(-1.0, Pvb1, Pvb2);
             //    e_relative = matlib_dnrm2(Pvb2)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -669,7 +670,7 @@ void test_pfem1d_ZFLT
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f, parallel: %0.16f", 
@@ -679,7 +680,7 @@ void test_pfem1d_ZFLT
             //    matlib_zaxpy(-1.0, U, V);
             //    e_relative = matlib_znrm2(V)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -790,7 +791,7 @@ void test_pfem1d_ZF2L
             parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f% 0.16f, parallel: %0.16f% 0.16f", 
@@ -800,7 +801,7 @@ void test_pfem1d_ZF2L
             //    matlib_zaxpy(-1.0, U, V);
             //    e_relative = matlib_znrm2(V)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -912,7 +913,7 @@ void test_pfem1d_ZPrjL2F
             parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
-            //BEGIN_DEBUG
+            //BEGIN_DTRACE
             //    for(i=0; i<Pvb1.len; i++)
             //    {
             //        debug_print( "[%d] -> serial: %0.16f% 0.16f, parallel: %0.16f% 0.16f", 
@@ -922,7 +923,7 @@ void test_pfem1d_ZPrjL2F
             //    matlib_zaxpy(-1.0, Pvb1, Pvb2);
             //    e_relative = matlib_znrm2(Pvb2)/norm_actual;
             //    debug_body("Relative error: % 0.16g", e_relative);
-            //END_DEBUG
+            //END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
@@ -1032,10 +1033,10 @@ void test_pfem1d_ZNorm2
             parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
                                                     (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
-            BEGIN_DEBUG
+            BEGIN_DTRACE
                 e_relative = fabs(norm1-norm2)/norm1;
                 debug_body("Relative error: % 0.16g", e_relative);
-            END_DEBUG
+            END_DTRACE
             
         }
         matlib_free((void*)x.elem_p);
