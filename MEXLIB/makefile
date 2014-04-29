@@ -58,6 +58,7 @@ SOURCES =   fem2lp.c       \
             mxfem1d_ILT.c  \
             mxfem1d_F2L.c  \
             mxfem1d_L2F.c  \
+            mxfem1d_PrjL2F.c  \
             fem_ilt2.c     \
             fem_ilt.c      \
             femlp_norm2.c  \

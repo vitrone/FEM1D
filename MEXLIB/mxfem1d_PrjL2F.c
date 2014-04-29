@@ -1,5 +1,5 @@
 /*============================================================================+/
- | mxfem1d_L2F.c
+ | mxfem1d_PrjL2F.c
  | Handles complex as well as real inut data.
  | Complex mxArray is not compatible with C complex types. Hence, a complex 
  | number is treated as a 2-tuple.
@@ -25,11 +25,11 @@ void mexFunction
 
     if(nrhs!=2) 
     {
-        mexErrMsgIdAndTxt("FEM1D:L2F:nrhs","Two inputs required.");
+        mexErrMsgIdAndTxt("FEM1D:PrjL2F:nrhs","Two inputs required.");
     }
     if(nlhs!=1) 
     {
-        mexErrMsgIdAndTxt("FEM1D:L2F:nlhs","One output required.");
+        mexErrMsgIdAndTxt("FEM1D:PrjL2F:nlhs","One output required.");
     } 
     
     matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
@@ -39,7 +39,6 @@ void mexFunction
                      .type   = MATLIB_COL_VECT};
 
     matlib_index dim = (ur.len)*p/(p+1)+1;
-    
 
     if(mxIsComplex(prhs[1]))
     {
@@ -47,24 +46,25 @@ void mexFunction
                           .elem_p = mxGetPr(prhs[1]),
                           .type   = MATLIB_COL_VECT};
         plhs[0] = mxCreateDoubleMatrix( dim, 1, mxCOMPLEX);
-        matlib_dv vbr = { .len    = dim, 
-                          .elem_p = mxGetPr(plhs[0]),
-                          .type   = MATLIB_COL_VECT};
-        matlib_dv vbi = { .len    = dim, 
-                          .elem_p = mxGetPr(plhs[0]),
-                          .type   = MATLIB_COL_VECT};
+        matlib_dv Pvbr = { .len    = dim, 
+                           .elem_p = mxGetPr(plhs[0]),
+                           .type   = MATLIB_COL_VECT};
+        matlib_dv Pvbi = { .len    = dim, 
+                           .elem_p = mxGetPr(plhs[0]),
+                           .type   = MATLIB_COL_VECT};
 
-        fem1d_DL2F(p, ur, vbr);
-        fem1d_DL2F(p, ui, vbi);
+        fem1d_DPrjL2F(p, ur, Pvbr);
+        fem1d_DPrjL2F(p, ui, Pvbi);
     }
     else
     {
         plhs[0] = mxCreateDoubleMatrix( dim, 1, mxREAL);
-        matlib_dv vbr = { .len    = dim,
-                          .elem_p = mxGetPr(plhs[0]),
-                          .type   = MATLIB_COL_VECT};
-        fem1d_DL2F(p, ur, vbr);
+        matlib_dv Pvbr = { .len    = dim,
+                           .elem_p = mxGetPr(plhs[0]),
+                           .type   = MATLIB_COL_VECT};
+        fem1d_DPrjL2F(p, ur, Pvbr);
     
     }
-}
+    
 
+}
