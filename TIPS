@@ -1,0 +1,7 @@
+Safer way of commenting:
+#if 0
+<put the code here>
+#endif
+
+
+
