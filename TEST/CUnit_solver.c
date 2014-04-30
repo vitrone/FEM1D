@@ -28,7 +28,7 @@
 
 /*============================================================================*/
 
-static const double TOL = 1e-9;
+static const matlib_real TOL = 1e-9;
 
 int init_suite(void)
 {
@@ -42,8 +42,8 @@ int clean_suite(void)
 /*============================================================================*/
 void poly_func
 ( 
-    const matlib_dv x, 
-          matlib_dv y
+    const matlib_xv x, 
+          matlib_xv y
 )
 {
     int deg = 10;
@@ -61,8 +61,8 @@ void poly_func
 
 void Gaussian_func
 ( 
-    const matlib_dv x, 
-          matlib_dv y
+    const matlib_xv x, 
+          matlib_xv y
 )
 {
     matlib_index i;
@@ -78,9 +78,9 @@ void Gaussian_func
 
 void Gaussian_func_t
 ( 
-    const matlib_dv x, 
-    const matlib_dv t, 
-          matlib_dm y
+    const matlib_xv x, 
+    const matlib_xv t, 
+          matlib_xm y
 )
 {
     matlib_index i, j;
@@ -101,7 +101,7 @@ void Gaussian_func_t
 
 void Gaussian_zfunc
 ( 
-    const matlib_dv x, 
+    const matlib_xv x, 
           matlib_zv z
 )
 {
@@ -118,8 +118,8 @@ void Gaussian_zfunc
 
 void Gaussian_zfunc_t
 ( 
-    const matlib_dv x, 
-    const matlib_dv t, 
+    const matlib_xv x, 
+    const matlib_xv t, 
           matlib_zm y
 )
 {
@@ -143,9 +143,9 @@ void Gaussian_zfunc_t
 /+============================================================================*/
 void test_solver_dsym
 (
-    matlib_dsparsem A,
-    matlib_dv       b,
-    matlib_dv       x
+    matlib_xm_sparse A,
+    matlib_xv       b,
+    matlib_xv       x
 )
 {
     debug_enter("%s", "");
@@ -185,7 +185,7 @@ void test_solver_dsym
      * memory that is necessary for the factorization. 
      * */
     phase = 11; /* Analysis */
-    double ddummy;
+    matlib_real ddummy;
     int idummy;
     debug_body("%s", "Start testing PARADISO");
 
@@ -235,7 +235,7 @@ void test_solver_dsym
 
 void test_solver_zsym
 (
-    matlib_zsparsem A,
+    matlib_zm_sparse A,
     matlib_zv       b,
     matlib_zv       x
 )
@@ -277,7 +277,7 @@ void test_solver_zsym
      * memory that is necessary for the factorization. 
      * */
     phase = 11; /* Analysis */
-    double ddummy;
+    matlib_real ddummy;
     int idummy;
     debug_body("%s", "Start testing PARADISO");
 
@@ -324,14 +324,14 @@ void test_solver_zsym
 }
 
 /*============================================================================*/
-double test_fem1d_DGMM_general
+matlib_real test_fem1d_XGMM_general
 (
     matlib_index p,
     matlib_index nr_LGL,
     matlib_index N,
-    double domain[2],
-    void  (*func_p)(matlib_dv, matlib_dv), 
-    void  (*potential_p)(matlib_dv, matlib_dv)
+    matlib_real domain[2],
+    void  (*func_p)(matlib_xv, matlib_xv), 
+    void  (*potential_p)(matlib_xv, matlib_xv)
 )
 /* 
  * potential function: phi(x)
@@ -343,71 +343,71 @@ double test_fem1d_DGMM_general
     matlib_index i, j;
     matlib_index P = nr_LGL-1;
 
-    double x_l = domain[0];
-    double x_r = domain[1];
+    matlib_real x_l = domain[0];
+    matlib_real x_r = domain[1];
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM, Q;
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_xm FM, IM, Q;
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
     fem1d_quadM( quadW, IM, &Q);
 
     /* generate the grid */ 
-    matlib_dv x;
+    matlib_xv x;
     fem1d_ref2mesh (xi, N, x_l, x_r, &x);
     debug_body("length of x: %d", x.len);
 
-    matlib_dv u, U;
-    matlib_create_dv( x.len,    &u, MATLIB_COL_VECT);
-    matlib_create_dv( N*(p+1),  &U, MATLIB_COL_VECT);
+    matlib_xv u, U;
+    matlib_create_xv( x.len,    &u, MATLIB_COL_VECT);
+    matlib_create_xv( N*(p+1),  &U, MATLIB_COL_VECT);
 
     (*func_p)(x, u);
-    fem1d_DFLT( N, FM, u, U);
+    fem1d_XFLT( N, FM, u, U);
 
     matlib_index dim = N*p+1, nnz = N*p*(p+3)/2+1;
     matlib_index row[dim+1], col[nnz];
-    double ugpmm[nnz];
+    matlib_real ugpmm[nnz];
 
     /* Transform it to FEM-basis: vertex and bubble basis functions */  
-    matlib_dv Uvb;
-    matlib_create_dv( dim, &Uvb, MATLIB_COL_VECT);
+    matlib_xv Uvb;
+    matlib_create_xv( dim, &Uvb, MATLIB_COL_VECT);
 
-    fem1d_DL2F(p, U, Uvb);
+    fem1d_XL2F(p, U, Uvb);
 
 
-    DEBUG_PRINT_DV(U,  "%s: ", "Legendre Transform");
-    DEBUG_PRINT_DV(Uvb, "%s: ", "coeff. fem basis func.");
+    DEBUG_PRINT_XV(U,  "%s: ", "Legendre Transform");
+    DEBUG_PRINT_XV(Uvb, "%s: ", "coeff. fem basis func.");
 
     /* Aseemble the global mass matrix */ 
-    matlib_dv Y, y;
-    matlib_create_dv( x.len,   &y, MATLIB_COL_VECT);
-    matlib_create_dv( N*(p+1), &Y, MATLIB_COL_VECT);
+    matlib_xv Y, y;
+    matlib_create_xv( x.len,   &y, MATLIB_COL_VECT);
+    matlib_create_xv( N*(p+1), &Y, MATLIB_COL_VECT);
    
     (*potential_p)(x,y);
 
     debug_body("nnz: %d", nnz);
 
-    matlib_dv q;
-    matlib_create_dv( Q.lenc*N, &q, MATLIB_COL_VECT);
-    fem1d_DFLT( N, Q, y, q);
-    DEBUG_PRINT_DV(q, "%s: ", "inner product");
+    matlib_xv q;
+    matlib_create_xv( Q.lenc*N, &q, MATLIB_COL_VECT);
+    fem1d_XFLT( N, Q, y, q);
+    DEBUG_PRINT_XV(q, "%s: ", "inner product");
 
-    fem1d_DCSRGMM(p, N, q, row, col, ugpmm);
+    fem1d_XCSRGMM(p, N, q, row, col, ugpmm);
 
     debug_body("nnz: %d, nnz actual: %d", row[dim], nnz);
 
-    matlib_dsparsem M = { .lenc = dim, 
+    matlib_xm_sparse M = { .lenc = dim, 
                           .lenr = dim, 
                           .rowIn = row, 
                           .colIn = col, 
                           .elem_p = ugpmm};
 
-    BEGIN_DEBUG
+    BEGIN_DTRACE
         debug_print("dimension of the sparse square matrix: %d", dim);
         for(i=0; i<dim; i++)
         {
@@ -416,49 +416,49 @@ double test_fem1d_DGMM_general
                 debug_print("UGPMM(%d,%d): % 0.16f", i, col[j], ugpmm[j]);
             }
         }
-    END_DEBUG
+    END_DTRACE
     
     /* Compute projection onto FEM-basis using the GMM */ 
-    //matlib_dv Pvb;
-    //matlib_create_dv( dim, &Pvb, MATLIB_COL_VECT);
-    //matlib_dcsrsymv(MATLIB_UPPER, M, Uvb, Pvb);
+    //matlib_xv Pvb;
+    //matlib_create_xv( dim, &Pvb, MATLIB_COL_VECT);
+    //matlib_xcsrsymv(MATLIB_UPPER, M, Uvb, Pvb);
        
     /* compute projection from the LP representation of phi(x)*u(x)*/
-    matlib_dv Pvb1;
-    matlib_create_dv( dim, &Pvb1, MATLIB_COL_VECT);
+    matlib_xv Pvb1;
+    matlib_create_xv( dim, &Pvb1, MATLIB_COL_VECT);
 
 
     for(i=0; i<x.len; i++)
     {
         y.elem_p[i] = u.elem_p[i] * y.elem_p[i];
     }
-    fem1d_DFLT( N, FM, y, Y);
-    fem1d_DPrjL2F(p, Y, Pvb1);
+    fem1d_XFLT( N, FM, y, Y);
+    fem1d_XPrjL2F(p, Y, Pvb1);
 
-    matlib_dv Uvb1;
-    matlib_create_dv( dim, &Uvb1, MATLIB_COL_VECT);
+    matlib_xv Uvb1;
+    matlib_create_xv( dim, &Uvb1, MATLIB_COL_VECT);
 
     test_solver_dsym(M, Pvb1, Uvb1);
 
-    BEGIN_DEBUG
+    BEGIN_DTRACE
         for(i=0;i<dim; i++)
         {
             debug_print( "[%d]-> Uvb: % 0.16f, Uvb1: % 0.16f", 
                          i, *(Uvb.elem_p+i), *(Uvb1.elem_p+i));
         }
-    END_DEBUG
+    END_DTRACE
 
-    double norm_actual = matlib_dnrm2(Uvb);
+    matlib_real norm_actual = matlib_xnrm2(Uvb);
     
-    matlib_daxpy(-1.0, Uvb1, Uvb);
+    matlib_xaxpy(-1.0, Uvb1, Uvb);
 
-    double e_relative = matlib_dnrm2(Uvb)/norm_actual;
+    matlib_real e_relative = matlib_xnrm2(Uvb)/norm_actual;
 
     debug_exit("Relative error: % 0.16g", e_relative);
 
     return(e_relative);
 }
-void constant_dpotential( const matlib_dv x, matlib_dv y)
+void constant_dpotential( const matlib_xv x, matlib_xv y)
 {
     matlib_index i;
     if(y.len >= x.len)
@@ -470,7 +470,7 @@ void constant_dpotential( const matlib_dv x, matlib_dv y)
         }
     }
 }
-void harmonic_dpotential( const matlib_dv x, matlib_dv y)
+void harmonic_dpotential( const matlib_xv x, matlib_xv y)
 {
     matlib_index i;
     if(y.len >= x.len)
@@ -482,7 +482,7 @@ void harmonic_dpotential( const matlib_dv x, matlib_dv y)
         }
     }
 }
-void sinusoidal_dpotential( const matlib_dv x, matlib_dv y)
+void sinusoidal_dpotential( const matlib_xv x, matlib_xv y)
 {
     matlib_index i;
     if(y.len >= x.len)
@@ -495,15 +495,15 @@ void sinusoidal_dpotential( const matlib_dv x, matlib_dv y)
     }
 
 }
-void test_fem1d_DGMM1(void)
+void test_fem1d_XGMM1(void)
 {
     matlib_index p, nr_LGL;
     matlib_index N = 1000;
-    double domain[2] = {-5.0, 5.0};
-    double e_relative;
+    matlib_real domain[2] = {-5.0, 5.0};
+    matlib_real e_relative;
     p = 2;
     nr_LGL = 4*p+1;
-    e_relative = test_fem1d_DGMM_general( p, nr_LGL, N, domain,
+    e_relative = test_fem1d_XGMM_general( p, nr_LGL, N, domain,
                                           Gaussian_func, 
                                           constant_dpotential);
     CU_ASSERT_TRUE(e_relative<TOL);
@@ -512,26 +512,26 @@ void test_fem1d_DGMM1(void)
     for( p=3; p<13; p++)
     {
         nr_LGL = 3*p+1;
-        e_relative = test_fem1d_DGMM_general( p, nr_LGL, N, domain,
+        e_relative = test_fem1d_XGMM_general( p, nr_LGL, N, domain,
                                               Gaussian_func, 
                                               constant_dpotential);
         CU_ASSERT_TRUE(e_relative<TOL);
 
-        e_relative = test_fem1d_DGMM_general( p, nr_LGL, N, domain,
+        e_relative = test_fem1d_XGMM_general( p, nr_LGL, N, domain,
                                               Gaussian_func, 
                                               harmonic_dpotential);
         CU_ASSERT_TRUE(e_relative<TOL);
     } 
 }
 /*============================================================================*/
-double test_fem1d_ZGMM_general
+matlib_real test_fem1d_ZGMM_general
 (
     matlib_index p,
     matlib_index nr_LGL,
     matlib_index N,
-    double domain[2],
-    void  (*func_p)(matlib_dv, matlib_zv), 
-    void  (*potential_p)(matlib_dv, matlib_zv)
+    matlib_real domain[2],
+    void  (*func_p)(matlib_xv, matlib_zv), 
+    void  (*potential_p)(matlib_xv, matlib_zv)
 )
 /* 
  * potential function: phi(x)
@@ -543,22 +543,22 @@ double test_fem1d_ZGMM_general
     matlib_index i, j;
     matlib_index P = nr_LGL-1;
 
-    double x_l = domain[0];
-    double x_r = domain[1];
+    matlib_real x_l = domain[0];
+    matlib_real x_r = domain[1];
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM, Q;
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_xm FM, IM, Q;
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
     fem1d_quadM( quadW, IM, &Q);
 
     /* generate the grid */ 
-    matlib_dv x;
+    matlib_xv x;
     fem1d_ref2mesh (xi, N, x_l, x_r, &x);
     debug_body("length of x: %d", x.len);
 
@@ -601,13 +601,13 @@ double test_fem1d_ZGMM_general
 
     debug_body("nnz: %d, nnz actual: %d", row[dim], nnz);
 
-    matlib_zsparsem M = { .lenc = dim, 
+    matlib_zm_sparse M = { .lenc = dim, 
                           .lenr = dim, 
                           .rowIn = row, 
                           .colIn = col, 
                           .elem_p = ugpmm};
 
-    BEGIN_DEBUG
+    BEGIN_DTRACE
         debug_print("dimension of the sparse square matrix: %d", dim);
         for(i=0; i<dim; i++)
         {
@@ -616,7 +616,7 @@ double test_fem1d_ZGMM_general
                 debug_print("UGPMM(%d,%d): % 0.16f %+0.16fi", i, col[j], ugpmm[j]);
             }
         }
-    END_DEBUG
+    END_DTRACE
     
     /* Compute projection onto FEM-basis using the GMM */ 
     //matlib_zv Pvb;
@@ -641,25 +641,25 @@ double test_fem1d_ZGMM_general
 
     test_solver_zsym(M, Pvb1, Uvb1);
 
-    BEGIN_DEBUG
+    BEGIN_DTRACE
         for(i=0;i<dim; i++)
         {
             debug_print( "[%d]-> Pvb-Pvb1: % 0.16f%+0.16fi", 
                          i, *(Uvb.elem_p+i)-*(Uvb1.elem_p+i));
         }
-    END_DEBUG
+    END_DTRACE
 
-    double norm_actual = matlib_znrm2(Uvb1);
+    matlib_real norm_actual = matlib_znrm2(Uvb1);
     
     matlib_zaxpy(-1.0, Uvb1, Uvb);
 
-    double e_relative = matlib_znrm2(Uvb)/norm_actual;
+    matlib_real e_relative = matlib_znrm2(Uvb)/norm_actual;
 
     debug_exit("Relative error: % 0.16g", e_relative);
 
     return(e_relative);
 }
-void constant_zpotential( const matlib_dv x, matlib_zv y)
+void constant_zpotential( const matlib_xv x, matlib_zv y)
 {
     matlib_index i;
     if(y.len >= x.len)
@@ -671,7 +671,7 @@ void constant_zpotential( const matlib_dv x, matlib_zv y)
         }
     }
 }
-void harmonic_zpotential( const matlib_dv x, matlib_zv y)
+void harmonic_zpotential( const matlib_xv x, matlib_zv y)
 {
     matlib_index i;
     if(y.len >= x.len)
@@ -688,8 +688,8 @@ void test_fem1d_ZGMM1(void)
 {
     matlib_index p, nr_LGL;
     matlib_index N = 2000;
-    double domain[2] = {-5.0, 5.0};
-    double e_relative;
+    matlib_real domain[2] = {-5.0, 5.0};
+    matlib_real e_relative;
 
     p = 2;
     nr_LGL = 2*p+1;
@@ -740,7 +740,7 @@ int main(void)
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Global mass matrix for Gaussian real"   , test_fem1d_DGMM1    },
+        { "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
         { "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
         CU_TEST_INFO_NULL,
     };

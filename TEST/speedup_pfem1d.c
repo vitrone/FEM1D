@@ -1,5 +1,5 @@
 /*============================================================================+/
- | File: Cunit_pthread_fem1d.c 
+ | File: Cunit_pfem1d.c 
  | Description: Test 
  |
  |
@@ -15,6 +15,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <sys/stat.h> /* for mkdir */ 
+
 /* MKL */ 
 #include "mkl.h"
 
@@ -24,53 +26,21 @@
 #include "legendre.h"
 #include "fem1d.h"
 #include "pfem1d.h"
-#include "pthpool.h"
 #include "assert.h"
 
-static const double TOL = 1e-9;
-
-/*============================================================================*/
-void write_dm(char* file_name, matlib_dm M)
-{
-    matlib_index i, j, col_st, row_st;
-    if(M.order == MATLIB_COL_MAJOR)
-    {
-        col_st = 1;
-        row_st = M.lenc;
-    }
-    else if(M.order == MATLIB_ROW_MAJOR)
-    {
-        col_st = M.lenr;
-        row_st = 1;
-    }
-    else
-    {
-        term_exec( "Storage order unknown (order: %d)", M.order);
-    }
-
-    FILE *fp = fopen(file_name, "w+");
-    for (i=0; i<M.lenc; i++)
-    {
-        for (j=0; j<M.lenr-1; j++)
-        {
-            fprintf(fp, "% 0.16f\t", M.elem_p[i*col_st+j*row_st]);
-        }
-        fprintf(fp, "% 0.16f\n", M.elem_p[i*col_st+j*row_st]);
-    }
-    fclose(fp);
-}
+static const matlib_real TOL = 1e-9;
 
 /*============================================================================*/
 void Gaussian
 ( 
-    matlib_dv x, 
-    matlib_dv u
+    matlib_xv x, 
+    matlib_xv u
 )
 {
 
     debug_enter("%s", "");
     
-    double *xptr;
+    matlib_real *xptr;
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
@@ -80,12 +50,12 @@ void Gaussian
     debug_exit("%s", "");
 }
 
-void test_pfem1d_DFLT
+void test_pfem1d_XFLT
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     debug_enter("polynomial degree: %d, nr. threads: %d", p, num_threads);
@@ -93,7 +63,7 @@ void test_pfem1d_DFLT
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -103,8 +73,8 @@ void test_pfem1d_DFLT
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -114,57 +84,57 @@ void test_pfem1d_DFLT
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, U, V;
-    double dim;
-    double norm_actual, e_relative;
-    double sum = 0;
+    matlib_xv x, u, U, V;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
+    matlib_real sum = 0;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( dim, &V, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &V, MATLIB_COL_VECT);
 
         for(i=0; i<num_cycles; i++)
         {
             clock_gettime(CLOCK_REALTIME, &tb);
-            fem1d_DFLT( N, FM, u, U);
+            fem1d_XFLT( N, FM, u, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
-            pfem1d_DFLT(N, FM, u, V, num_threads, mp);
+            pfem1d_XFLT(N, FM, u, V, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
             //BEGIN_DTRACE
@@ -192,19 +162,19 @@ void test_pfem1d_DFLT
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 }
 /*============================================================================*/
 
-void test_pfem1d_DF2L
+void test_pfem1d_XF2L
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     
@@ -213,7 +183,7 @@ void test_pfem1d_DF2L
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -223,8 +193,8 @@ void test_pfem1d_DF2L
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -234,59 +204,59 @@ void test_pfem1d_DF2L
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, vb, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, vb, U, V;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( dim, &V, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &vb, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
-        fem1d_DL2F( p, U, vb);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( dim, &V, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &vb, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
+        fem1d_XL2F( p, U, vb);
 
         for(i=0; i<num_cycles; i++)
         {
             clock_gettime(CLOCK_REALTIME, &tb);
-            fem1d_DF2L( p, vb, U);
+            fem1d_XF2L( p, vb, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
-            pfem1d_DF2L(p, vb, V, num_threads, mp);
+            pfem1d_XF2L(p, vb, V, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
@@ -312,8 +282,8 @@ void test_pfem1d_DF2L
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -322,12 +292,12 @@ void test_pfem1d_DF2L
 }
 
 
-void test_pfem1d_DPrjL2F
+void test_pfem1d_XPrjL2F
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     
@@ -336,7 +306,7 @@ void test_pfem1d_DPrjL2F
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -346,8 +316,8 @@ void test_pfem1d_DPrjL2F
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -357,58 +327,58 @@ void test_pfem1d_DPrjL2F
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, Pvb1, Pvb2, U;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_xv x, u, Pvb1, Pvb2, U;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &Pvb1, MATLIB_COL_VECT);
-        matlib_create_dv( N*p+1, &Pvb2, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &Pvb1, MATLIB_COL_VECT);
+        matlib_create_xv( N*p+1, &Pvb2, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
             clock_gettime(CLOCK_REALTIME, &tb);
-            fem1d_DPrjL2F( p, U, Pvb1);
+            fem1d_XPrjL2F( p, U, Pvb1);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
-            pfem1d_DPrjL2F(p, U, Pvb2, num_threads, mp);
+            pfem1d_XPrjL2F(p, U, Pvb2, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
             //BEGIN_DTRACE
@@ -435,20 +405,20 @@ void test_pfem1d_DPrjL2F
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
 
 }
 
-void test_pfem1d_DNorm2
+void test_pfem1d_XNorm2
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     
@@ -457,7 +427,7 @@ void test_pfem1d_DNorm2
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -467,8 +437,8 @@ void test_pfem1d_DNorm2
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -478,56 +448,56 @@ void test_pfem1d_DNorm2
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x, u, U;
-    double dim;
-    double norm1, norm2, e_relative;
+    matlib_xv x, u, U;
+    matlib_real dim;
+    matlib_real norm1, norm2, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
 
 
         /* Provide the initial condition */
-        matlib_create_dv( x.len, &u, MATLIB_COL_VECT);
+        matlib_create_xv( x.len, &u, MATLIB_COL_VECT);
 
         Gaussian(x, u);
         dim = N*(p+1);
-        matlib_create_dv( dim, &U, MATLIB_COL_VECT);
-        fem1d_DFLT( N, FM, u, U);
+        matlib_create_xv( dim, &U, MATLIB_COL_VECT);
+        fem1d_XFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
             clock_gettime(CLOCK_REALTIME, &tb);
-            norm1 = fem1d_DNorm2( p, N, U);
+            norm1 = fem1d_XNorm2( p, N, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
-            norm2 = pfem1d_DNorm2(p, N, U, num_threads, mp);
+            norm2 = pfem1d_XNorm2(p, N, U, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
             //BEGIN_DTRACE
@@ -552,8 +522,8 @@ void test_pfem1d_DNorm2
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -564,14 +534,14 @@ void test_pfem1d_DNorm2
 /*============================================================================*/
 void zGaussian
 ( 
-    matlib_dv x, 
+    matlib_xv x, 
     matlib_zv u
 )
 {
 
     debug_enter("%s", "");
     
-    double *xptr;
+    matlib_real *xptr;
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
@@ -586,8 +556,8 @@ void test_pfem1d_ZFLT
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     
@@ -596,7 +566,7 @@ void test_pfem1d_ZFLT
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -606,8 +576,8 @@ void test_pfem1d_ZFLT
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -617,31 +587,31 @@ void test_pfem1d_ZFLT
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, V;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
@@ -660,14 +630,14 @@ void test_pfem1d_ZFLT
             clock_gettime(CLOCK_REALTIME, &tb);
             fem1d_ZFLT( N, FM, u, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
             pfem1d_ZFLT(N, FM, u, V, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             /* Analyze error */ 
             //BEGIN_DTRACE
@@ -693,8 +663,8 @@ void test_pfem1d_ZFLT
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -705,8 +675,8 @@ void test_pfem1d_ZF2L
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     
@@ -715,7 +685,7 @@ void test_pfem1d_ZF2L
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -725,8 +695,8 @@ void test_pfem1d_ZF2L
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -735,31 +705,31 @@ void test_pfem1d_ZF2L
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, V, vb;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
@@ -782,14 +752,14 @@ void test_pfem1d_ZF2L
             clock_gettime(CLOCK_REALTIME, &tb);
             fem1d_ZF2L( p, vb, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
             pfem1d_ZF2L(p, vb, V, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             //BEGIN_DTRACE
             //    for(i=0; i<U.len; i++)
@@ -815,8 +785,8 @@ void test_pfem1d_ZF2L
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -828,8 +798,8 @@ void test_pfem1d_ZPrjL2F
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     debug_enter("polynomial degree: %d, nr. threads: %d", p, num_threads);
@@ -837,7 +807,7 @@ void test_pfem1d_ZPrjL2F
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -847,8 +817,8 @@ void test_pfem1d_ZPrjL2F
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -858,31 +828,31 @@ void test_pfem1d_ZPrjL2F
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U, Pvb1, Pvb2;
-    double dim;
-    double norm_actual, e_relative;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
@@ -904,14 +874,14 @@ void test_pfem1d_ZPrjL2F
             clock_gettime(CLOCK_REALTIME, &tb);
             fem1d_ZPrjL2F( p, U, Pvb1);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
             pfem1d_ZPrjL2F(p, U, Pvb2, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             //BEGIN_DTRACE
             //    for(i=0; i<Pvb1.len; i++)
@@ -937,8 +907,8 @@ void test_pfem1d_ZPrjL2F
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -950,8 +920,8 @@ void test_pfem1d_ZNorm2
 (
     matlib_index p,
     matlib_index num_threads,
-    matlib_dm    serial_time,
-    matlib_dm    parallel_time
+    matlib_xm    serial_time,
+    matlib_xm    parallel_time
 )
 {
     debug_enter("polynomial degree: %d, nr. threads: %d", p, num_threads);
@@ -959,7 +929,7 @@ void test_pfem1d_ZNorm2
     matlib_index num_cycles = serial_time.lenr-1;
 
     struct timespec tb, te;
-    double dt;
+    matlib_real dt;
 
     clock_gettime(CLOCK_REALTIME, &tb);
     
@@ -969,8 +939,8 @@ void test_pfem1d_ZNorm2
     pthpool_create_threads(num_threads, mp);
 
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
     debug_print( "Creation of threads[msec]: %0.6f", dt);
 
     matlib_index i, j;
@@ -980,31 +950,31 @@ void test_pfem1d_ZNorm2
     matlib_index P = 4*p;
 
     /* define the domain */ 
-    double x_l = -5.0;
-    double x_r =  5.0;
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
 
-    matlib_dv xi, quadW;
+    matlib_xv xi, quadW;
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
-    matlib_dm FM, IM;
+    matlib_xm FM, IM;
 
-    matlib_create_dm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_dm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
 
-    matlib_dv x;
+    matlib_xv x;
     matlib_zv u, U;
-    double dim;
-    double norm1, norm2, e_relative;
+    matlib_real dim;
+    matlib_real norm1, norm2, e_relative;
 
     for(j=0; j<num_exp; j++)
     {
         /* generate the grid */ 
         N = (j+1)*N0;
-        serial_time.elem_p[j]   = (double)N; 
-        parallel_time.elem_p[j] = (double)N; 
+        serial_time.elem_p[j]   = (matlib_real)N; 
+        parallel_time.elem_p[j] = (matlib_real)N; 
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
@@ -1024,14 +994,14 @@ void test_pfem1d_ZNorm2
             clock_gettime(CLOCK_REALTIME, &tb);
             norm1 = fem1d_ZNorm2( p, N, U);
             clock_gettime(CLOCK_REALTIME, &te);
-            serial_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                  (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            serial_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                  (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             clock_gettime(CLOCK_REALTIME, &tb);
             norm2 = pfem1d_ZNorm2( p, N, U, num_threads, mp);
             clock_gettime(CLOCK_REALTIME, &te);
-            parallel_time.elem_p[j+(i+1)*num_exp] = (double)(te.tv_sec-tb.tv_sec)*1.0e3 +
-                                                    (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+            parallel_time.elem_p[j+(i+1)*num_exp] = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 +
+                                                    (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
             BEGIN_DTRACE
                 e_relative = fabs(norm1-norm2)/norm1;
@@ -1048,8 +1018,8 @@ void test_pfem1d_ZNorm2
     clock_gettime(CLOCK_REALTIME, &tb);
     pthpool_destroy_threads(num_threads, mp);
     clock_gettime(CLOCK_REALTIME, &te);
-    dt = (double)(te.tv_sec-tb.tv_sec)*1.0e3 + 
-         (double)(te.tv_nsec-tb.tv_nsec)/1.0e6;
+    dt = (matlib_real)(te.tv_sec-tb.tv_sec)*1.0e3 + 
+         (matlib_real)(te.tv_nsec-tb.tv_nsec)/1.0e6;
 
     debug_print( "Exit threads[msec]: %0.6f", dt);
 
@@ -1062,7 +1032,7 @@ void test_pfem1d_ZNorm2
 void test_performance
 (
     matlib_index p,
-    void         (*fp)(matlib_index, matlib_index, matlib_dm, matlib_dm),
+    void         (*fp)(matlib_index, matlib_index, matlib_xm, matlib_xm),
     char*        path
 ) 
 {
@@ -1074,14 +1044,14 @@ void test_performance
 
     char file_name[80];
 
-    matlib_dm serial_time, parallel_time;
+    matlib_xm serial_time, parallel_time;
 
-    matlib_create_dm( num_exp, 
+    matlib_create_xm( num_exp, 
                       num_cycles+1, 
                       &serial_time, 
                       MATLIB_COL_MAJOR, 
                       MATLIB_NO_TRANS);
-    matlib_create_dm( num_exp, 
+    matlib_create_xm( num_exp, 
                       num_cycles+1, 
                       &parallel_time, 
                       MATLIB_COL_MAJOR, 
@@ -1095,13 +1065,13 @@ void test_performance
                  path, num_threads, p);
         debug_body("file name: %s", file_name);
 
-        write_dm( file_name, serial_time);
+        matlib_xmwrite_csv( file_name, serial_time);
 
         sprintf( file_name, "%s/parallel_time_num_threads%d_p%02d.dat",
                  path, num_threads, p);
         debug_body("file name: %s", file_name);
 
-        write_dm( file_name, parallel_time);
+        matlib_xmwrite_csv( file_name, parallel_time);
         debug_body("%s","data written to files.");
     }
     
@@ -1110,6 +1080,26 @@ void test_performance
 
     debug_exit("%s", "");
 
+}
+void check_and_create_dir(char* path)
+{
+    struct stat sb = {0,}; /* stat buffer */ 
+    if(stat(path, &sb)==-1)
+    {
+        mkdir(path, (S_IRWXU|S_IRWXG));
+    }
+    else
+    {
+        matlib_int uin = 1;
+        printf("Directory exists.\n");
+        printf("Enter [0] to overwrite (default: abort): ");
+        scanf("%d", &uin);
+        if(uin!=0)
+        {
+            printf("Aborting...\n");
+            exit(EXIT_SUCCESS);
+        }
+    }
 }
 
 
@@ -1124,20 +1114,74 @@ int main(void)
     //mkl_set_num_threads(1);
     mkl_domain_set_num_threads(1, MKL_BLAS);
 
-    char path[20];
-    matlib_index p = 15;
+    /* Print options and get user input */ 
+    char* options[] = { "pfem1d_XFLT",
+                        "pfem1d_XF2L",
+                        "pfem1d_XPrjL2F",
+                        "pfem1d_XNorm2",
+                        "pfem1d_ZFLT",
+                        "pfem1d_ZF2L",
+                        "pfem1d_ZPrjL2F",
+                        "pfem1d_ZNorm2", 
+                        NULL};
 
-    //strcpy( path, "pfem1d_DFLT");
-    //test_performance(p, test_pfem1d_DFLT, path);
+    void* fp[] = { test_pfem1d_XFLT,
+                   test_pfem1d_XF2L,
+                   test_pfem1d_XPrjL2F,
+                   test_pfem1d_XNorm2,
+                   test_pfem1d_ZFLT,
+                   test_pfem1d_ZF2L,
+                   test_pfem1d_ZPrjL2F,
+                   test_pfem1d_ZNorm2, 
+                   NULL};
 
-    //strcpy( path, "pfem1d_DF2L");
-    //test_performance(p, test_pfem1d_DF2L, path);
+    matlib_int i = 0;
+    do 
+    {
+        printf("[%d] Test %s\n", i, options[i]);
+        i++;
+    } 
+    while (options[i]!=NULL);
+
+    matlib_int input, nr_try = 3;
+    for(i=0; i< nr_try; i++ )
+    {
+        printf( "Enter option : ");
+        scanf("%d", &input);
+        if(options[input] != NULL)
+        {
+            char* path = options[input];
+            printf("Running speedup test: %s\n", path);
+            check_and_create_dir(path);
+
+            matlib_index p = 4;
+            
+            /* Carry out the test. */ 
+            if(fp[input]!=NULL)
+            {
+                test_performance(p, fp[input], path);
+            }
+
+            break;
+        }
+        else
+        {
+            printf("Invalid input. Try again!\n");
+        }
+    }
+
+
+
+    //strcpy( path, "pfem1d_XFLT");
+
+    //strcpy( path, "pfem1d_XF2L");
+    //test_performance(p, test_pfem1d_XF2L, path);
     //
-    //strcpy( path, "pfem1d_DPrjL2F");
-    //test_performance(p, test_pfem1d_DPrjL2F, path);
+    //strcpy( path, "pfem1d_XPrjL2F");
+    //test_performance(p, test_pfem1d_XPrjL2F, path);
 
-    strcpy( path, "pfem1d_DNorm2");
-    test_performance(p, test_pfem1d_DNorm2, path);
+    //strcpy( path, "pfem1d_XNorm2");
+    //test_performance(p, test_pfem1d_XNorm2, path);
     //
     //strcpy( path, "pfem1d_ZFLT");
     //test_performance(p, test_pfem1d_ZFLT, path);
@@ -1148,8 +1192,8 @@ int main(void)
     //strcpy( path, "pfem1d_ZPrjL2F");
     //test_performance(p, test_pfem1d_ZPrjL2F, path);
 
-    strcpy( path, "pfem1d_ZNorm2");
-    test_performance(p, test_pfem1d_ZNorm2, path);
+    //strcpy( path, "pfem1d_ZNorm2");
+    //test_performance(p, test_pfem1d_ZNorm2, path);
     return(0);
 }
 

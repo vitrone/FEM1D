@@ -20,6 +20,15 @@
 
 void matlib_xmwrite_csv(char* file_name, matlib_xm M)
 {
+
+    FILE *fp = fopen(file_name, "w+");
+#if 1
+    if(fp==NULL)
+    {
+        term_exec("failed to create the file '%s'", file_name );
+    }
+#endif
+
     matlib_index i, j, col_st, row_st;
     if(M.order == MATLIB_COL_MAJOR)
     {
@@ -36,7 +45,6 @@ void matlib_xmwrite_csv(char* file_name, matlib_xm M)
         term_exec( "Storage order unknown (order: %d)", M.order);
     }
 
-    FILE *fp = fopen(file_name, "w+");
     for (i=0; i<M.lenc; i++)
     {
         for (j=0; j<M.lenr-1; j++)
@@ -49,6 +57,13 @@ void matlib_xmwrite_csv(char* file_name, matlib_xm M)
 }
 void matlib_zmwrite_csv(char* file_name, matlib_zm M)
 {
+
+    FILE *fp = fopen(file_name, "w+");
+    if(fp==NULL)
+    {
+        term_exec("failed to create the file '%s'", file_name );
+    }
+
     matlib_index i, j, col_st, row_st;
     if(M.order == MATLIB_COL_MAJOR)
     {
@@ -65,7 +80,7 @@ void matlib_zmwrite_csv(char* file_name, matlib_zm M)
         term_exec( "Storage order unknown (order: %d)", M.order);
     }
 
-    FILE *fp = fopen(file_name, "w+");
+
     for (i=0; i<M.lenc; i++)
     {
         for (j=0; j<M.lenr-1; j++)
@@ -84,9 +99,14 @@ void matlib_xvwrite_csv
     matlib_xv    v[n]
 )
 {
+    FILE *fp = fopen(file_name, "w+");
+    if(fp==NULL)
+    {
+        term_exec("failed to create the file '%s'", file_name );
+    }
+
     matlib_index i, j;
 
-    FILE *fp = fopen(file_name, "w+");
     for (i=0; i<v->len; i++)
     {
         for (j=0; j<n-1; j++)
@@ -105,9 +125,15 @@ void matlib_zvwrite_csv
     matlib_zv    v[n]
 )
 {
-    matlib_index i, j;
 
     FILE *fp = fopen(file_name, "w+");
+    if(fp==NULL)
+    {
+        term_exec("failed to create the file '%s'", file_name );
+    }
+
+    matlib_index i, j;
+
     for (i=0; i<v->len; i++)
     {
         for (j=0; j<n-1; j++)
@@ -128,9 +154,14 @@ void matlib_xzvwrite_csv
     matlib_zv    v[n]
 )
 {
+    FILE *fp = fopen(file_name, "w+");
+    if(fp==NULL)
+    {
+        term_exec("failed to create the file '%s'", file_name );
+    }
+
     matlib_index i, j, k;
 
-    FILE *fp = fopen(file_name, "w+");
     for (i=0; i<u->len; i++)
     {
         for (j=0; j<m-1; j++)

@@ -8,7 +8,7 @@
 #include "mkl.h"
 
 
-#define DEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "matlib.h"

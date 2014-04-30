@@ -232,17 +232,17 @@ matlib_real test_interpolation_general
     matlib_real e_relative = matlib_xnrm2(u_interpol)/norm_actual;
     
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
-    matlib_free( (void*) IMi.elem_p);
-    matlib_free( (void*) xii.elem_p);
-    matlib_free( (void*) x1.elem_p);
-    matlib_free( (void*) u_actual.elem_p);
-    matlib_free( (void*) u_interpol.elem_p);
+    matlib_free( FM.elem_p);
+    matlib_free( xi.elem_p);
+    matlib_free( x.elem_p);
+    matlib_free( u.elem_p);
+    matlib_free( U.elem_p);
+    matlib_free( quadW.elem_p);
+    matlib_free( IMi.elem_p);
+    matlib_free( xii.elem_p);
+    matlib_free( x1.elem_p);
+    matlib_free( u_actual.elem_p);
+    matlib_free( u_interpol.elem_p);
 
     debug_exit("Relative interpolation error: % 0.16g", e_relative);
     return e_relative;
@@ -363,17 +363,17 @@ matlib_real test_interpolation_general2
     e_relative = matlib_xnrm2(u_tmp1)/norm_actual;
     
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
-    matlib_free( (void*) IMi.elem_p);
-    matlib_free( (void*) xii.elem_p);
-    matlib_free( (void*) x1.elem_p);
-    matlib_free( (void*) u_actual.elem_p);
-    matlib_free( (void*) u_interpol.elem_p);
+    matlib_free( FM.elem_p);
+    matlib_free( xi.elem_p);
+    matlib_free( x.elem_p);
+    matlib_free( u.elem_p);
+    matlib_free( U.elem_p);
+    matlib_free( quadW.elem_p);
+    matlib_free( IMi.elem_p);
+    matlib_free( xii.elem_p);
+    matlib_free( x1.elem_p);
+    matlib_free( u_actual.elem_p);
+    matlib_free( u_interpol.elem_p);
 
     debug_exit("Relative interpolation error: % 0.16g", e_relative);
     return e_relative;
@@ -530,17 +530,17 @@ matlib_real test_interpolation_general3
     matlib_real e_relative = matlib_znrm2(u_interpol)/norm_actual;
     
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
-    matlib_free( (void*) IMi.elem_p);
-    matlib_free( (void*) xii.elem_p);
-    matlib_free( (void*) x1.elem_p);
-    matlib_free( (void*) u_actual.elem_p);
-    matlib_free( (void*) u_interpol.elem_p);
+    matlib_free( FM.elem_p);
+    matlib_free( xi.elem_p);
+    matlib_free( x.elem_p);
+    matlib_free( u.elem_p);
+    matlib_free( U.elem_p);
+    matlib_free( quadW.elem_p);
+    matlib_free( IMi.elem_p);
+    matlib_free( xii.elem_p);
+    matlib_free( x1.elem_p);
+    matlib_free( u_actual.elem_p);
+    matlib_free( u_interpol.elem_p);
 
     debug_exit("Relative interpolation error: % 0.16g", e_relative);
     return(e_relative);
@@ -648,17 +648,17 @@ matlib_real test_interpolation_general4
     matlib_real e_relative = matlib_znrm2(u_tmp1)/norm_actual;
     
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
-    matlib_free( (void*) IMi.elem_p);
-    matlib_free( (void*) xii.elem_p);
-    matlib_free( (void*) x1.elem_p);
-    matlib_free( (void*) u_actual.elem_p);
-    matlib_free( (void*) u_interpol.elem_p);
+    matlib_free(FM.elem_p);
+    matlib_free(xi.elem_p);
+    matlib_free(x.elem_p);
+    matlib_free(u.elem_p);
+    matlib_free(U.elem_p);
+    matlib_free(quadW.elem_p);
+    matlib_free(IMi.elem_p);
+    matlib_free(xii.elem_p);
+    matlib_free(x1.elem_p);
+    matlib_free(u_actual.elem_p);
+    matlib_free(u_interpol.elem_p);
 
     debug_exit("Relative interpolation error: % 0.16g", e_relative);
     return(e_relative);
@@ -740,12 +740,12 @@ matlib_real test_L2_dnorm_general
     matlib_real e_relative = fabs(expected_norm-lp_norm)/expected_norm;
 
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
+    matlib_free(FM.elem_p);
+    matlib_free(xi.elem_p);
+    matlib_free(x.elem_p);
+    matlib_free(u.elem_p);
+    matlib_free(U.elem_p);
+    matlib_free(quadW.elem_p);
 
     debug_exit("Relative error in norm2: % 0.16g", e_relative);
     return e_relative;
@@ -792,12 +792,12 @@ matlib_real test_L2_znorm_general
     matlib_real e_relative = fabs(expected_norm-lp_norm)/expected_norm;
 
     /* Free allocated memory*/ 
-    matlib_free( (void*) FM.elem_p);
-    matlib_free( (void*) xi.elem_p);
-    matlib_free( (void*) x.elem_p);
-    matlib_free( (void*) u.elem_p);
-    matlib_free( (void*) U.elem_p);
-    matlib_free( (void*) quadW.elem_p);
+    matlib_free(FM.elem_p);
+    matlib_free(xi.elem_p);
+    matlib_free(x.elem_p);
+    matlib_free(u.elem_p);
+    matlib_free(U.elem_p);
+    matlib_free(quadW.elem_p);
 
     debug_exit("Relative error in norm2: % 0.16g", e_relative);
     return e_relative;
