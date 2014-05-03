@@ -21,7 +21,7 @@
 #include "mkl.h"
 #include "omp.h"
 
-//#define NDEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
@@ -1653,19 +1653,19 @@ int main(void)
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        //{ "Parallel XFLT"           , test_pfem1d_XFLT    },
-        //{ "Parallel XILT"           , test_pfem1d_XILT    },
-        //{ "Parallel XFLT2"          , test_pfem1d_XFLT2   },
-        //{ "Parallel XF2L"           , test_pfem1d_XF2L    },
-        //{ "Parallel projection XL2F", test_pfem1d_XPrjL2F },
-        //{ "Parallel X-L2 norm"      , test_pfem1d_XNorm2  },
-        { "Parallel Real GMM"     , test_pfem1d_XGMM    },
-        //{ "Parallel ZFLT"           , test_pfem1d_ZFLT    },
-        //{ "Parallel ZFLT2"          , test_pfem1d_ZFLT2   },
-        //{ "Parallel ZILT"           , test_pfem1d_ZILT    },
-        //{ "Parallel ZF2L"           , test_pfem1d_ZF2L    },
-        //{ "Parallel projection ZL2F", test_pfem1d_ZPrjL2F },
-        //{ "Parallel Z-L2 norm"      , test_pfem1d_ZNorm2  },
+        { "Parallel XFLT"           , test_pfem1d_XFLT    },
+        { "Parallel XILT"           , test_pfem1d_XILT    },
+        { "Parallel XFLT2"          , test_pfem1d_XFLT2   },
+        { "Parallel XF2L"           , test_pfem1d_XF2L    },
+        { "Parallel projection XL2F", test_pfem1d_XPrjL2F },
+        { "Parallel X-L2 norm"      , test_pfem1d_XNorm2  },
+        { "Parallel Real GMM"       , test_pfem1d_XGMM    },
+        { "Parallel ZFLT"           , test_pfem1d_ZFLT    },
+        { "Parallel ZFLT2"          , test_pfem1d_ZFLT2   },
+        { "Parallel ZILT"           , test_pfem1d_ZILT    },
+        { "Parallel ZF2L"           , test_pfem1d_ZF2L    },
+        { "Parallel projection ZL2F", test_pfem1d_ZPrjL2F },
+        { "Parallel Z-L2 norm"      , test_pfem1d_ZNorm2  },
         { "Parallel Complex GMM"    , test_pfem1d_ZGMM    },
         CU_TEST_INFO_NULL,
     };

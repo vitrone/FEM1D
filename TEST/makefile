@@ -45,6 +45,7 @@ SOURCES = CUnit_matrix.c   \
           CUnit_legendre.c \
           CUnit_jacobi.c   \
           CUnit_fem1d.c    \
+          CUnit_matlib_solver.c   \
           CUnit_solver.c   \
           speedup_pfem1d.c \
           CUnit_fem1d_Schroedinger.c   \

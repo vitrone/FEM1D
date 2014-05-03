@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include "mkl.h"
 
-//#define NDEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "fem1d.h"
