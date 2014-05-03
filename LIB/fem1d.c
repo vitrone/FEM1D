@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include "mkl.h"
 
-#define NDEBUG
+//#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "fem1d.h"
@@ -4904,8 +4904,6 @@ void fem1d_XCSRGMM2
      * */
     matlib_index s, i, l, l0, m, st;
 
-    i = 0;
-    s = 0;
     
     /* In this routine, we traverse the mass matrix row-wise
      * and record the row entries and column index
@@ -4932,6 +4930,8 @@ void fem1d_XCSRGMM2
 
     for(ugpmm=ugpmm_p; ugpmm<ugpmm_p+q.lenr; ugpmm++)
     {
+        i = 0;
+        s = 0;
         (*ugpmm)[s] = *(q.elem_p);
         s++;
     
@@ -5269,7 +5269,6 @@ void fem1d_ZCSRGMM2
             }
             st = st+nr_combi;
         }
-        debug_body("s=%d", s);
         /* last row: only the diagonal 
          * (v_N,v_N)_{K_N}
          * */ 
@@ -5336,7 +5335,7 @@ void fem1d_xm_sparse_GMM
     M->lenr   = dim;
     M->rowIn  = calloc( dim+1, sizeof(matlib_index));
     M->colIn  = calloc(   nnz, sizeof(matlib_index));
-    M->elem_p = calloc(   nnz, sizeof(double));
+    M->elem_p = calloc(   nnz, sizeof(matlib_real));
 
     matlib_xv q;
     matlib_create_xv( Q.lenc*N, &q, MATLIB_COL_VECT);
@@ -5386,7 +5385,7 @@ void fem1d_zm_sparse_GMM
 
     fem1d_ZCSRGMM(p, N, q, M->rowIn, M->colIn, M->elem_p);
     
-    matlib_free((void*) q.elem_p);
+    matlib_free(q.elem_p);
     debug_exit("%s", "");
 
 }
@@ -5411,11 +5410,12 @@ void fem1d_xm_nsparse_GMM
                  "size of Q: %d-by-%d), ",
                  p, N, nsparse, Q.lenc, Q.lenr);
 
-    assert(Q.lenc==(p-1)*(p+4)/2+3);
 
     if(op_enum == FEM1D_GMM_INIT)
     {
-        matlib_create_xm( Q.lenr, nsparse, phi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
+        debug_body("%s", "Initializing data structures");
+        assert(Q.lenc==(p-1)*(p+4)/2+3);
+        matlib_create_xm( (Q.lenr-1)*N+1, nsparse, phi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
         matlib_create_xm( Q.lenc*N, nsparse, q, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
         
         matlib_index dim = N*p+1;
@@ -5430,12 +5430,18 @@ void fem1d_xm_nsparse_GMM
 
         for(matlib_index i = 0; i<nsparse; i++)
         {
-            M->elem_p[i] = calloc( nnz, sizeof(double));
+            M->elem_p[i] = calloc( nnz, sizeof(matlib_real));
         }
     }
     else if((op_enum == FEM1D_GET_NZE_ONLY) || 
             (op_enum == FEM1D_GET_SPARSITY_NZE))
     {
+        debug_body( "size of phi: %d-by-%d, "
+                    "size of q: %d-by-%d, "
+                    "size of M: %d-by-%d ",
+                    phi->lenc, phi->lenr,
+                    q->lenc, q->lenr, 
+                    M->lenc, M->lenr);
         fem1d_XFLT2( N, Q, *phi, *q);
         fem1d_XCSRGMM2(p, N, *q, M->elem_p);
     }
@@ -5443,18 +5449,37 @@ void fem1d_xm_nsparse_GMM
             (op_enum == FEM1D_GET_SPARSITY_NZE))
     {
         fem1d_GMMSparsity(p, N, M->rowIn, M->colIn);
+        debug_body( "nr. of non-zero elements: %d", 
+                    M->rowIn[M->lenc]);
     }
     else if(op_enum == FEM1D_GMM_FREE)
     {
-        matlib_free(phi->elem_p);
-        matlib_free(q->elem_p);
-        matlib_free(M->colIn);
-        matlib_free(M->rowIn);
-
-        for(matlib_index i = 0; i<nsparse; i++)
+        debug_body( "%s", "De-allocate memory");
+        
+        if(phi != NULL)
         {
-            matlib_free(M->elem_p[i]);
+            debug_body( "%s", "De-allocate memory: phi");
+            matlib_free(phi->elem_p);
         }
+
+        if(q != NULL)
+        {
+            debug_body( "%s", "De-allocate memory: q");
+            matlib_free(q->elem_p);
+        }
+        
+        if(M != NULL)
+        {
+            debug_body( "%s", "De-allocate memory: M");
+            matlib_free(M->colIn);
+            matlib_free(M->rowIn);
+            for(matlib_index i = 0; i<M->nsparse; i++)
+            {
+                matlib_free(M->elem_p[i]);
+            }
+            matlib_free(M->elem_p);
+        }
+
     }
 
     debug_exit("%s", "");
@@ -5485,10 +5510,10 @@ void fem1d_zm_nsparse_GMM
                  "size of Q: %d-by-%d)",
                  p, N, nsparse, Q.lenc, Q.lenr);
 
-    assert(Q.lenc==(p-1)*(p+4)/2+3);
     if(op_enum == FEM1D_GMM_INIT)
     {
         debug_body("%s", "Initializing data structures");
+        assert(Q.lenc==(p-1)*(p+4)/2+3);
         matlib_index dim = N*p+1;
         matlib_index nnz = N*(Q.lenc-1)+1;
         matlib_create_zm( (Q.lenr-1)*N+1, nsparse, phi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
@@ -5528,13 +5553,30 @@ void fem1d_zm_nsparse_GMM
     }
     if(op_enum == FEM1D_GMM_FREE)
     {
-        matlib_free(phi->elem_p);
-        matlib_free(q->elem_p);
-        matlib_free(M->colIn);
-        matlib_free(M->rowIn);
-        for(matlib_index i = 0; i<nsparse; i++)
+        debug_body( "%s", "De-allocate memory");
+        
+        if(phi != NULL)
         {
-            matlib_free(M->elem_p[i]);
+            debug_body( "%s", "De-allocate memory: phi");
+            matlib_free(phi->elem_p);
+        }
+
+        if(q != NULL)
+        {
+            debug_body( "%s", "De-allocate memory: q");
+            matlib_free(q->elem_p);
+        }
+        
+        if(M != NULL)
+        {
+            debug_body( "%s", "De-allocate memory: M");
+            matlib_free(M->colIn);
+            matlib_free(M->rowIn);
+            for(matlib_index i = 0; i<M->nsparse; i++)
+            {
+                matlib_free(M->elem_p[i]);
+            }
+            matlib_free(M->elem_p);
         }
     }
 

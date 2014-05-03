@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include "mkl.h"
 
-#define NDEBUG
+//#define NDEBUG
 #define MATLIB_NTRACE_DATA
 #include "assert.h"
 #include "pfem1d.h"
@@ -4610,7 +4610,6 @@ static void* pfem1d_thfunc_XCSRGMM2(void* mp)
             }
             st = st+nr_combi;
         }
-        debug_body("s=%d", s);
         /* last row: only the diagonal 
          * (v_N,v_N)_{K_N}
          * */ 
@@ -4671,7 +4670,7 @@ void pfem1d_xm_nsparse_GMM
                  p, N, M->nsparse, Q.lenc, Q.lenr);
 
     assert(Q.lenc==(p-1)*(p+4)/2+3);
-    assert(q.lenr==M->nsparse);
+    assert(q->lenr==M->nsparse);
 
     matlib_index i; 
     pfem1d_XFLT2( N, Q, *phi, *q, num_threads, mp);
@@ -4688,7 +4687,12 @@ void pfem1d_xm_nsparse_GMM
 
     /* define the block of data per thread */ 
     matlib_index Np = M->nsparse/(num_threads);
-
+    if(Np<1)
+    {
+        term_exec( "Work distribution across %d threads is not optimal.",
+                   num_threads);
+    
+    }
     for(i=0; i<num_threads-1; i++)
     {
         nsdata[i][0] = i*Np;
@@ -4759,7 +4763,8 @@ static void* pfem1d_thfunc_ZCSRGMM2(void* mp)
     matlib_complex **ugpmm;
 
     for( ugpmm = M.elem_p+start_end_index[0]; 
-         ugpmm < M.elem_p+start_end_index[1]; ugpmm++)
+         ugpmm < M.elem_p+start_end_index[1]; 
+         ugpmm++, (q.elem_p)+=q.lenc)
     {
         i = 0;
         s = 0;
@@ -4812,7 +4817,6 @@ static void* pfem1d_thfunc_ZCSRGMM2(void* mp)
             }
             st = st+nr_combi;
         }
-        debug_body("s=%d", s);
         /* last row: only the diagonal 
          * (v_N,v_N)_{K_N}
          * */ 
@@ -4846,7 +4850,6 @@ static void* pfem1d_thfunc_ZCSRGMM2(void* mp)
                 i++;
             }
         }
-        q.elem_p += q.lenc;
     }
 
     debug_exit("%s", "");
@@ -4873,7 +4876,7 @@ void pfem1d_zm_nsparse_GMM
                  p, N, M->nsparse, Q.lenc, Q.lenr);
 
     assert(Q.lenc==(p-1)*(p+4)/2+3);
-    assert(q.lenr==M->nsparse);
+    assert(q->lenr==M->nsparse);
 
     matlib_index i; 
     pfem1d_ZFLT2( N, Q, *phi, *q, num_threads, mp);
@@ -4890,6 +4893,12 @@ void pfem1d_zm_nsparse_GMM
 
     /* define the block of data per thread */ 
     matlib_index Np = M->nsparse/(num_threads);
+    if(Np<1)
+    {
+        term_exec( "Work distribution across %d threads is not optimal.",
+                   num_threads);
+    
+    }
 
     for(i=0; i<num_threads-1; i++)
     {

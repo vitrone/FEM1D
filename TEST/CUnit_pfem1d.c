@@ -21,7 +21,7 @@
 #include "mkl.h"
 #include "omp.h"
 
-#define NDEBUG
+//#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
@@ -702,6 +702,139 @@ void test_pfem1d_XNorm2(void)
         test_pfem1d_XNorm2_general(p);
     }
 }
+/*============================================================================*/
+
+void linear_timedependent_xpotential
+( 
+    matlib_xv   x, 
+    matlib_real t0, 
+    matlib_real dt, 
+    matlib_xm   y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  *(x.elem_p+i)*(cos(2*M_PI*(t0)));
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
+}
+
+void test_pfem1d_XGMM_general(matlib_index p)
+{
+    
+    debug_enter("polynomial degree: %d", p);
+    /* define number of timing experiments and repeatitions */ 
+    matlib_index num_exp    = 5;
+    matlib_index num_cycles = 10;
+
+    /* Create pthreads */
+    matlib_index num_threads = 4;
+    pthpool_data_t mp[num_threads];
+    
+    pthpool_create_threads(num_threads, mp);
+
+    matlib_index i, j, k;
+
+    matlib_index N, N0 = 200;
+    matlib_index P = 4*p;
+
+    /* define the domain */ 
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
+
+    matlib_xv xi, quadW;
+    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
+    
+    matlib_xm FM, IM, Q;
+
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+
+    legendre_LGLdataFM( xi, FM);
+    legendre_LGLdataIM( xi, IM);
+    fem1d_quadM( quadW, IM, &Q);
+    
+    matlib_xm phi1, q1, phi2, q2;
+    matlib_xm_nsparse M1, M2;
+
+    matlib_xv x;
+    matlib_xv y1, y2;
+
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
+    matlib_real t0 = 0;
+    matlib_real dt = 1e-3;
+    matlib_index nsparse = 4;
+
+    for(j=0; j<num_exp; j++)
+    {
+        /* generate the grid */ 
+        N = (j+1)*N0;
+
+        fem1d_ref2mesh (xi, N, x_l, x_r, &x);
+        debug_body("length of x: %d", x.len);
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GMM_INIT);
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, &phi2, &q2, &M2, FEM1D_GMM_INIT);
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M1, FEM1D_GET_SPARSITY_ONLY);
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M2, FEM1D_GET_SPARSITY_ONLY);
+        debug_print("nr. of non-zero elements: %d", M1.rowIn[M1.lenc]);
+        debug_print("nr. of non-zero elements: %d", M2.rowIn[M2.lenc]);
+
+        linear_timedependent_xpotential(x, t0, dt, phi1);
+        linear_timedependent_xpotential(x, t0, dt, phi2);
+
+        dim = N*(p+1);
+
+        for(i=0; i<num_cycles; i++)
+        {
+            fem1d_xm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GET_NZE_ONLY);
+            pfem1d_xm_nsparse_GMM(p, N, Q, &phi2, &q2, &M2, num_threads, mp);
+
+            /* Analyze error */ 
+            y1.len = M1.rowIn[M1.lenc];
+            y2.len = M2.rowIn[M2.lenc];
+            for(k=0; k<nsparse; k++)
+            {
+                y1.elem_p = M1.elem_p[k];
+                y2.elem_p = M2.elem_p[k];
+                DEBUG_PRINT_XV(y1, "%s: ", "y1");
+                DEBUG_PRINT_XV(y2, "%s: ", "y2");
+
+                norm_actual = matlib_xnrm2(y1);
+                matlib_xaxpy(-1.0, y1, y2);
+                e_relative = matlib_xnrm2(y2)/norm_actual;
+                debug_body("%d-th sparse matrix, Relative error: % 0.16g", k, e_relative);
+                CU_ASSERT_TRUE(e_relative<TOL);
+            
+            }
+            
+        }
+
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GMM_FREE);
+        fem1d_xm_nsparse_GMM(p, N, nsparse, Q, &phi2, &q2, &M2, FEM1D_GMM_FREE);
+        matlib_free(x.elem_p);
+    }
+    
+    debug_body("%s", "signal threads to exit!");
+    pthpool_destroy_threads(num_threads, mp);
+}
+
+void test_pfem1d_XGMM(void)
+{
+    debug_enter("%s", "");
+    matlib_index p_max = 5;
+    for (matlib_index p=4; p<p_max; p++)
+    {
+        test_pfem1d_XGMM_general(p);
+    }
+}
 /*============================================================================+/
  | COMPLEX VERSION 
 /+============================================================================*/
@@ -1364,6 +1497,28 @@ void test_pfem1d_ZNorm2(void)
         test_pfem1d_ZNorm2_general(p);
     }
 }
+/*============================================================================*/
+void linear_timedependent_zpotential
+( 
+    matlib_xv   x, 
+    matlib_real t0, 
+    matlib_real dt, 
+    matlib_zm   y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  *(x.elem_p+i)*(cos(2*M_PI*(t0))+I*sin(2*M_PI*(t0)));
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
+}
 
 void test_pfem1d_ZGMM_general(matlib_index p)
 {
@@ -1379,7 +1534,7 @@ void test_pfem1d_ZGMM_general(matlib_index p)
     
     pthpool_create_threads(num_threads, mp);
 
-    matlib_index i, j;
+    matlib_index i, j, k;
 
     matlib_index N, N0 = 200;
     matlib_index P = 4*p;
@@ -1399,11 +1554,18 @@ void test_pfem1d_ZGMM_general(matlib_index p)
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
     fem1d_quadM( quadW, IM, &Q);
+    
+    matlib_zm phi1, q1, phi2, q2;
+    matlib_zm_nsparse M1, M2;
 
     matlib_xv x;
-    matlib_zv u, U, Pvb1, Pvb2;
+    matlib_zv y1, y2;
+
     matlib_real dim;
     matlib_real norm_actual, e_relative;
+    matlib_real t0 = 0;
+    matlib_real dt = 1e-3;
+    matlib_index nsparse = 20;
 
     for(j=0; j<num_exp; j++)
     {
@@ -1412,53 +1574,61 @@ void test_pfem1d_ZGMM_general(matlib_index p)
 
         fem1d_ref2mesh (xi, N, x_l, x_r, &x);
         debug_body("length of x: %d", x.len);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GMM_INIT);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi2, &q2, &M2, FEM1D_GMM_INIT);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M1, FEM1D_GET_SPARSITY_ONLY);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M2, FEM1D_GET_SPARSITY_ONLY);
+        debug_print("nr. of non-zero elements: %d", M1.rowIn[M1.lenc]);
+        debug_print("nr. of non-zero elements: %d", M2.rowIn[M2.lenc]);
 
-
-        /* Provide the initial condition */
-        matlib_create_zv( x.len, &u, MATLIB_COL_VECT);
-
-        zGaussian(x, u);
+        linear_timedependent_zpotential(x, t0, dt, phi1);
+        linear_timedependent_zpotential(x, t0, dt, phi2);
 
         dim = N*(p+1);
-        matlib_create_zv( dim, &U, MATLIB_COL_VECT);
-        matlib_create_zv( N*p+1, &Pvb1, MATLIB_COL_VECT);
-        matlib_create_zv( N*p+1, &Pvb2, MATLIB_COL_VECT);
-        fem1d_ZFLT( N, FM, u, U);
 
         for(i=0; i<num_cycles; i++)
         {
-            fem1d_ZPrjL2F( p, U, Pvb1);
-
-            pfem1d_ZPrjL2F(p, U, Pvb2, num_threads, mp);
+            fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GET_NZE_ONLY);
+            pfem1d_zm_nsparse_GMM(p, N, Q, &phi2, &q2, &M2, num_threads, mp);
 
             /* Analyze error */ 
-            BEGIN_DTRACE
-                for(i=0; i<Pvb1.len; i++)
-                {
-                    debug_print( "[%d] -> serial: %0.16f% 0.16f, "
-                                 "parallel: %0.16f% 0.16f", 
-                                 i, Pvb1.elem_p[i], Pvb2.elem_p[i]);
-                }
-            END_DTRACE
+            y1.len = M1.rowIn[M1.lenc];
+            y2.len = M2.rowIn[M2.lenc];
+            for(k=0; k<nsparse; k++)
+            {
+                y1.elem_p = M1.elem_p[k];
+                y2.elem_p = M2.elem_p[k];
+                DEBUG_PRINT_ZV(y1, "%s: ", "y1");
+                DEBUG_PRINT_ZV(y2, "%s: ", "y2");
 
-            norm_actual = matlib_znrm2(Pvb1);
-            matlib_zaxpy(-1.0, Pvb1, Pvb2);
-            e_relative = matlib_znrm2(Pvb2)/norm_actual;
-            debug_body("Relative error: % 0.16g", e_relative);
+                norm_actual = matlib_znrm2(y1);
+                matlib_zaxpy(-1.0, y1, y2);
+                e_relative = matlib_znrm2(y2)/norm_actual;
+                debug_body("%d-th sparse matrix, Relative error: % 0.16g", k, e_relative);
+                CU_ASSERT_TRUE(e_relative<TOL);
             
-            CU_ASSERT_TRUE(e_relative<TOL);
+            }
+            
         }
+
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi1, &q1, &M1, FEM1D_GMM_FREE);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi2, &q2, &M2, FEM1D_GMM_FREE);
         matlib_free(x.elem_p);
-        matlib_free(u.elem_p);
-        matlib_free(Pvb1.elem_p);
-        matlib_free(Pvb2.elem_p);
-        matlib_free(U.elem_p);
     }
     
     debug_body("%s", "signal threads to exit!");
     pthpool_destroy_threads(num_threads, mp);
 }
 
+void test_pfem1d_ZGMM(void)
+{
+    debug_enter("%s", "");
+    matlib_index p_max = 5;
+    for (matlib_index p=4; p<p_max; p++)
+    {
+        test_pfem1d_ZGMM_general(p);
+    }
+}
 
 /*============================================================================+/
  | Test runner
@@ -1469,6 +1639,7 @@ void test_pfem1d_ZGMM_general(matlib_index p)
 int main(void)
 {
 
+    debug_enter("%s", "");
     //mkl_set_num_threads(1);
     mkl_domain_set_num_threads(1, MKL_BLAS);
     CU_pSuite pSuite = NULL;
@@ -1482,18 +1653,20 @@ int main(void)
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Parallel XFLT"           , test_pfem1d_XFLT    },
-        { "Parallel XILT"           , test_pfem1d_XILT    },
-        { "Parallel XFLT2"          , test_pfem1d_XFLT2   },
-        { "Parallel XF2L"           , test_pfem1d_XF2L    },
-        { "Parallel projection XL2F", test_pfem1d_XPrjL2F },
-        { "Parallel X-L2 norm"      , test_pfem1d_XNorm2  },
-        { "Parallel ZFLT"           , test_pfem1d_ZFLT    },
-        { "Parallel ZFLT2"          , test_pfem1d_ZFLT2   },
-        { "Parallel ZILT"           , test_pfem1d_ZILT    },
-        { "Parallel ZF2L"           , test_pfem1d_ZF2L    },
-        { "Parallel projection ZL2F", test_pfem1d_ZPrjL2F },
-        { "Parallel Z-L2 norm"      , test_pfem1d_ZNorm2  },
+        //{ "Parallel XFLT"           , test_pfem1d_XFLT    },
+        //{ "Parallel XILT"           , test_pfem1d_XILT    },
+        //{ "Parallel XFLT2"          , test_pfem1d_XFLT2   },
+        //{ "Parallel XF2L"           , test_pfem1d_XF2L    },
+        //{ "Parallel projection XL2F", test_pfem1d_XPrjL2F },
+        //{ "Parallel X-L2 norm"      , test_pfem1d_XNorm2  },
+        { "Parallel Real GMM"     , test_pfem1d_XGMM    },
+        //{ "Parallel ZFLT"           , test_pfem1d_ZFLT    },
+        //{ "Parallel ZFLT2"          , test_pfem1d_ZFLT2   },
+        //{ "Parallel ZILT"           , test_pfem1d_ZILT    },
+        //{ "Parallel ZF2L"           , test_pfem1d_ZF2L    },
+        //{ "Parallel projection ZL2F", test_pfem1d_ZPrjL2F },
+        //{ "Parallel Z-L2 norm"      , test_pfem1d_ZNorm2  },
+        { "Parallel Complex GMM"    , test_pfem1d_ZGMM    },
         CU_TEST_INFO_NULL,
     };
 

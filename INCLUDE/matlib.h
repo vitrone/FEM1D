@@ -128,7 +128,16 @@ typedef struct
 } matlib_zm;
 
 /*============================================================================*/
-/* SPARSE FORMATS */
+/* SPARSE FORMATS
+ * 
+ * CSR3: 
+ * i-th row, matrix elements: elem_p[rowIn[i]]... elem_p[rowIn[i+1]-1]
+ * column matlib_index : colIn[rowIn[i]] < colIn[rowIn[i]+1] <...< col[rowIn[i+1]-1]
+ * 
+ * nr of non-zero elements: rowIn[M.lenc]
+ *
+ * */
+
 typedef enum
 {
     MATLIB_CSR3,
