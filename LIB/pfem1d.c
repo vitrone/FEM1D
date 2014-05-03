@@ -21,11 +21,11 @@
 #include "pfem1d.h"
 /*============================================================================*/
 
-static void* pfem1d_thfunc_DFLT(void* mp);
+static void* pfem1d_thfunc_XFLT(void* mp);
 static void* pfem1d_thfunc_ZFLT(void* mp);
-static void* pfem1d_thfunc_DILT(void* mp);
+static void* pfem1d_thfunc_XILT(void* mp);
 static void* pfem1d_thfunc_ZILT(void* mp);
-static void* pfem1d_thfunc_DFLT2(void* mp);
+static void* pfem1d_thfunc_XFLT2(void* mp);
 static void* pfem1d_thfunc_ZFLT2(void* mp);
 static void* thfunc_dshapefunc2lp(void* mp);
 static void* thfunc_zshapefunc2lp(void* mp);
@@ -150,8 +150,12 @@ static void* thfunc_zlp_snorm2_d_7(void* mp);
 static void* thfunc_zlp_snorm2_d_8(void* mp);
 static void* thfunc_zlp_snorm2_d_9(void* mp);
 static void* thfunc_zlp_snorm2_d_10(void* mp);
+
+static void* pfem1d_thfunc_XCSRGMM2(void* mp);
+static void* pfem1d_thfunc_ZCSRGMM2(void* mp);
+
 /*============================================================================*/
-static void* pfem1d_thfunc_DFLT(void* mp)
+static void* pfem1d_thfunc_XFLT(void* mp)
 {
 
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
@@ -270,7 +274,7 @@ void pfem1d_XFLT
         arg[i].nonshared_data = (void**)&nsdata[i];
         arg[i].thread_index   = i;
         /* Define the task */ 
-        task[i].function  = (void*)pfem1d_thfunc_DFLT;
+        task[i].function  = (void*)pfem1d_thfunc_XFLT;
         task[i].argument  = &arg[i];
         mp[i].task = &task[i];
     }
@@ -280,7 +284,7 @@ void pfem1d_XFLT
     arg[i].nonshared_data = (void**)&nsdata[i];
     arg[i].thread_index   = i;
     /* Define the task */ 
-    task[i].function  = (void*)pfem1d_thfunc_DFLT;
+    task[i].function  = (void*)pfem1d_thfunc_XFLT;
     task[i].argument  = &arg[i];
     mp[i].task = &task[i];
 
@@ -446,7 +450,7 @@ void pfem1d_ZFLT
 
 }
 /*============================================================================*/
-static void* pfem1d_thfunc_DILT(void* mp)
+static void* pfem1d_thfunc_XILT(void* mp)
 /* 
  * N : can be deduced from the length of the matrices provided but
  *     this leads to untraceble bugs. Hence this is made as an argument.
@@ -628,7 +632,7 @@ void pfem1d_XILT
     arg[i].nonshared_data = (void**)&nonshared_data[i];
     arg[i].thread_index   = i;
     /* Define the task */ 
-    task[i].function  = (void*)pfem1d_thfunc_DILT;
+    task[i].function  = (void*)pfem1d_thfunc_XILT;
     task[i].argument  = &arg[i];
     mp[i].task = &task[i];
     for(i=1; i<num_threads-1; i++)
@@ -641,7 +645,7 @@ void pfem1d_XILT
         arg[i].nonshared_data = (void**)&nonshared_data[i];
         arg[i].thread_index   = i;
         /* Define the task */ 
-        task[i].function  = (void*)pfem1d_thfunc_DILT;
+        task[i].function  = (void*)pfem1d_thfunc_XILT;
         task[i].argument  = &arg[i];
         mp[i].task = &task[i];
     }
@@ -655,7 +659,7 @@ void pfem1d_XILT
         arg[i].nonshared_data = (void**)&nonshared_data[i];
         arg[i].thread_index   = i;
         /* Define the task */ 
-        task[i].function  = (void*)pfem1d_thfunc_DILT;
+        task[i].function  = (void*)pfem1d_thfunc_XILT;
         task[i].argument  = &arg[i];
         mp[i].task = &task[i];
     }
@@ -942,7 +946,7 @@ void pfem1d_ZILT
     debug_exit("%s", "");
 }
 /*============================================================================*/
-static void* pfem1d_thfunc_DFLT2(void* mp)
+static void* pfem1d_thfunc_XFLT2(void* mp)
 /* 
  * N : can be deduced from the length of the matrices provided but
  *     this leads to untraceble bugs. Hence this is made as an argument.
@@ -1085,7 +1089,7 @@ void pfem1d_XFLT2
         arg[i].nonshared_data = (void**)&nsdata[i];
         arg[i].thread_index   = i;
         /* Define the task */ 
-        task[i].function  = (void*)pfem1d_thfunc_DFLT2;
+        task[i].function  = (void*)pfem1d_thfunc_XFLT2;
         task[i].argument  = &arg[i];
         mp[i].task = &task[i];
     }
@@ -1095,7 +1099,7 @@ void pfem1d_XFLT2
     arg[i].nonshared_data = (void**)&nsdata[i];
     arg[i].thread_index   = i;
     /* Define the task */ 
-    task[i].function  = (void*)pfem1d_thfunc_DFLT2;
+    task[i].function  = (void*)pfem1d_thfunc_XFLT2;
     task[i].argument  = &arg[i];
     mp[i].task = &task[i];
 
@@ -4512,4 +4516,407 @@ static void* thfunc_zlp_snorm2_d_10(void* mp)
     }
 }
  
+/*============================================================================+/
+ | Building Global Mass Matrix 
+/+============================================================================*/
+
+static void* pfem1d_thfunc_XCSRGMM2(void* mp)
+/* Real CSR - Assemble Global Mass Matrix*/ 
+{
+
+    pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
+    matlib_index p = *((matlib_index*) (ptr->shared_data[0]));
+    matlib_index N = *((matlib_index*) (ptr->shared_data[1]));
+    matlib_xm q    =    *((matlib_xm*) (ptr->shared_data[2]));
+
+    matlib_xm_nsparse M = *((matlib_xm_nsparse*) (ptr->shared_data[3]));
+
+    debug_enter( "Thread id: %d, degree of polynomial: %d, "
+                 "Number of finite-elements: %d, "
+                 "length of q: %d-by-%d", 
+                 ptr->thread_index,
+                 p, N, q.lenc, q.lenr);
+
+   matlib_index nr_combi = q.lenc/N; 
+   debug_body("nr. of combinations of basis functions: %d", nr_combi);
+   
+
+    /* number of nonzero elements nnz = N*p*(p+3)/2+1;
+     * */
+    matlib_index s, i, l, l0, m, st;
+
+    i = 0;
+    s = 0;
+    
+    matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
+    
+    debug_body( "Thread id: %d, start_index: %d, end_index: %d",
+                ptr->thread_index, 
+                start_end_index[0], start_end_index[1]);
+
+    q.elem_p += (q.lenc*start_end_index[0]);
+
+    matlib_real **ugpmm;
+
+    for( ugpmm = M.elem_p+start_end_index[0]; 
+         ugpmm < M.elem_p+start_end_index[1]; ugpmm++)
+    {
+        (*ugpmm)[s] = *(q.elem_p);
+        s++;
+    
+        (*ugpmm)[s] = *(q.elem_p+1);
+        s++;
+
+        matlib_index shiftq = 3;
+        
+        for (l=N+1; l<(N+p); l++)
+        {
+            (*ugpmm)[s] = (*(q.elem_p + shiftq));
+            shiftq ++;
+            s++;
+        }
+
+        l0 = N+1;
+        st = 0;
+        for( i=1; i<N; i++)
+        {
+            /* i-th row: start from the diagonal 
+             * (v_i,v_i)_{K_i} + (v_i,v_i)_{K_{i+1}}
+             * (v_i,v_{i+1})_{K_{i+1}}
+             * */ 
+            (*ugpmm)[s] = *(q.elem_p+st+2) + *(q.elem_p+st+nr_combi);
+            s++;
+            (*ugpmm)[s] = *(q.elem_p+st+nr_combi+1); 
+            s++;
+            /* v_i interacts with [b_i?], [b_{i+1,?}]
+             * (p-1) bubble functions in each element
+             */
+            shiftq = st+3+p-1;
+            for (l=l0; l<(l0+p-1); l++)
+            {
+                (*ugpmm)[s] = *(q.elem_p + shiftq);
+                shiftq ++;
+                s++;
+            }
+            l0 = l;
+
+            shiftq = st + nr_combi+3;
+            for (l=l0; l<(l0+p-1); l++)
+            {
+                (*ugpmm)[s] = *(q.elem_p+shiftq);
+                shiftq++;
+                s++;
+            
+            }
+            st = st+nr_combi;
+        }
+        debug_body("s=%d", s);
+        /* last row: only the diagonal 
+         * (v_N,v_N)_{K_N}
+         * */ 
+        (*ugpmm)[s] = *(q.elem_p+st+2);
+        s++;
+        shiftq = st+3+(p-1);
+        for (l=l0; l<(l0+p-1); l++)
+        {
+            (*ugpmm)[s] = *(q.elem_p+shiftq);
+            shiftq++;
+            s++;
+        }       
+        i++;
+
+        /* vertex-vertex and vertex-bubble combinations are done
+         * do the bubble-bubble combination
+         * */ 
+        matlib_index shiftq0 = 3+2*(p-1);
+
+        for( st=0; st<N*nr_combi; st +=nr_combi)
+        {
+            shiftq = shiftq0;
+            for( l=0; l<p-1; l++)
+            {
+                for (m=i; m<(i+p-1-l); m++)
+                {
+                    (*ugpmm)[s] = *(q.elem_p+st+shiftq);
+                    shiftq++;
+                    s++;
+                }
+                i++;
+            }
+        }
+        q.elem_p += q.lenc;
+    }
+
+    debug_exit("%s", "");
+}
+
+void pfem1d_xm_nsparse_GMM
+/* Double - Assemble Global Mass Matrix*/ 
+(
+    matlib_index       p,
+    matlib_index       N,
+    matlib_xm          Q,
+    matlib_xm*         phi,
+    matlib_xm*         q,
+    matlib_xm_nsparse* M,
+    matlib_index       num_threads,
+    pthpool_data_t*    mp
+    
+)
+{
+    debug_enter( "poynomial degree: %d, "
+                 "nr. of fem-elements: %d, "
+                 "nr. of sparse matrices: %d, "
+                 "size of Q: %d-by-%d), ",
+                 p, N, M->nsparse, Q.lenc, Q.lenr);
+
+    assert(Q.lenc==(p-1)*(p+4)/2+3);
+    assert(q.lenr==M->nsparse);
+
+    matlib_index i; 
+    pfem1d_XFLT2( N, Q, *phi, *q, num_threads, mp);
+    /* define the shared data */ 
+    void* shared_data[4] = { (void*) &p,
+                             (void*) &N,
+                             (void*) q,
+                             (void*) M };
+
+    matlib_index nsdata[num_threads][2];
+
+    pthpool_arg_t   arg[num_threads];
+    pthpool_task_t  task[num_threads];
+
+    /* define the block of data per thread */ 
+    matlib_index Np = M->nsparse/(num_threads);
+
+    for(i=0; i<num_threads-1; i++)
+    {
+        nsdata[i][0] = i*Np;
+        nsdata[i][1] = (i+1)*Np;
+        arg[i].shared_data    = shared_data; 
+        arg[i].nonshared_data = (void**)&nsdata[i];
+        arg[i].thread_index   = i;
+        /* Define the task */ 
+        task[i].function  = (void*)pfem1d_thfunc_XCSRGMM2;
+        task[i].argument  = &arg[i];
+        mp[i].task = &task[i];
+    }
+    nsdata[i][0] = i*Np;
+    nsdata[i][1] = M->nsparse;
+    arg[i].shared_data    = shared_data; 
+    arg[i].nonshared_data = (void**)&nsdata[i];
+    arg[i].thread_index   = i;
+    /* Define the task */ 
+    task[i].function  = (void*)pfem1d_thfunc_XCSRGMM2;
+    task[i].argument  = &arg[i];
+    mp[i].task = &task[i];
+
+    debug_body("%s", "created task");
+
+    pthpool_exec_task(num_threads, mp, task);
+    
+    debug_exit("%s", "");
+}
+
+/*============================================================================*/
+static void* pfem1d_thfunc_ZCSRGMM2(void* mp)
+{
+    pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
+    matlib_index p = *((matlib_index*) (ptr->shared_data[0]));
+    matlib_index N = *((matlib_index*) (ptr->shared_data[1]));
+    matlib_zm q    =    *((matlib_zm*) (ptr->shared_data[2]));
+
+    matlib_zm_nsparse M = *((matlib_zm_nsparse*) (ptr->shared_data[3]));
+
+    debug_enter( "Thread id: %d, degree of polynomial: %d, "
+                 "Number of finite-elements: %d, "
+                 "length of q: %d-by-%d", 
+                 ptr->thread_index,
+                 p, N, q.lenc, q.lenr);
+
+
+   matlib_index nr_combi = q.lenc/N; 
+   debug_body("nr. of combinations of basis functions: %d", nr_combi);
+   
+
+    /* number of nonzero elements nnz = N*p*(p+3)/2+1;
+     * */
+    matlib_index s, i, l, l0, m, st;
+
+    /* zero-th row 
+     *
+     * (v_0,v_0)_{K_1}
+     * (v_0,v_1)_{K_1}
+     * */ 
+    matlib_index* start_end_index = (matlib_index*) (ptr->nonshared_data);
+    
+    debug_body( "Thread id: %d, start_index: %d, end_index: %d",
+                ptr->thread_index, 
+                start_end_index[0], start_end_index[1]);
+
+    q.elem_p += (q.lenc*start_end_index[0]);
+
+    matlib_complex **ugpmm;
+
+    for( ugpmm = M.elem_p+start_end_index[0]; 
+         ugpmm < M.elem_p+start_end_index[1]; ugpmm++)
+    {
+        i = 0;
+        s = 0;
+        (*ugpmm)[s] = *(q.elem_p);
+        s++;
+    
+        (*ugpmm)[s] = *(q.elem_p+1);
+        s++;
+
+        matlib_index shiftq = 3;
+        
+        for (l=N+1; l<(N+p); l++)
+        {
+            (*ugpmm)[s] = (*(q.elem_p + shiftq));
+            shiftq ++;
+            s++;
+        }
+
+        l0 = N+1;
+        st = 0;
+        for( i=1; i<N; i++)
+        {
+            /* i-th row: start from the diagonal 
+             * (v_i,v_i)_{K_i} + (v_i,v_i)_{K_{i+1}}
+             * (v_i,v_{i+1})_{K_{i+1}}
+             * */ 
+            (*ugpmm)[s] = *(q.elem_p+st+2) + *(q.elem_p+st+nr_combi);
+            s++;
+            (*ugpmm)[s] = *(q.elem_p+st+nr_combi+1); 
+            s++;
+            /* v_i interacts with [b_i?], [b_{i+1,?}]
+             * (p-1) bubble functions in each element
+             */
+            shiftq = st+3+p-1;
+            for (l=l0; l<(l0+p-1); l++)
+            {
+                (*ugpmm)[s] = *(q.elem_p + shiftq);
+                shiftq ++;
+                s++;
+            }
+            l0 = l;
+
+            shiftq = st + nr_combi+3;
+            for (l=l0; l<(l0+p-1); l++)
+            {
+                (*ugpmm)[s] = *(q.elem_p+shiftq);
+                shiftq++;
+                s++;
+            
+            }
+            st = st+nr_combi;
+        }
+        debug_body("s=%d", s);
+        /* last row: only the diagonal 
+         * (v_N,v_N)_{K_N}
+         * */ 
+        (*ugpmm)[s] = *(q.elem_p+st+2);
+        s++;
+        shiftq = st+3+(p-1);
+        for (l=l0; l<(l0+p-1); l++)
+        {
+            (*ugpmm)[s] = *(q.elem_p+shiftq);
+            shiftq++;
+            s++;
+        }
+        i++;
+
+        /* vertex-vertex and vertex-bubble combinations are done
+         * do the bubble-bubble combination
+         * */ 
+        matlib_index shiftq0 = 3+2*(p-1);
+
+        for( st=0; st<N*nr_combi; st +=nr_combi)
+        {
+            shiftq = shiftq0;
+            for( l=0; l<p-1; l++)
+            {
+                for (m=i; m<(i+p-1-l); m++)
+                {
+                    (*ugpmm)[s] = *(q.elem_p+st+shiftq);
+                    shiftq++;
+                    s++;
+                }
+                i++;
+            }
+        }
+        q.elem_p += q.lenc;
+    }
+
+    debug_exit("%s", "");
+}
+
+void pfem1d_zm_nsparse_GMM
+/* Double - Assemble Global Mass Matrix*/ 
+(
+    matlib_index       p,
+    matlib_index       N,
+    matlib_xm          Q,
+    matlib_zm*         phi,
+    matlib_zm*         q,
+    matlib_zm_nsparse* M,
+    matlib_index       num_threads,
+    pthpool_data_t*    mp
+    
+)
+{
+    debug_enter( "poynomial degree: %d, "
+                 "nr. of fem-elements: %d, "
+                 "nr. of sparse matrices: %d, "
+                 "size of Q: %d-by-%d), ",
+                 p, N, M->nsparse, Q.lenc, Q.lenr);
+
+    assert(Q.lenc==(p-1)*(p+4)/2+3);
+    assert(q.lenr==M->nsparse);
+
+    matlib_index i; 
+    pfem1d_ZFLT2( N, Q, *phi, *q, num_threads, mp);
+    /* define the shared data */ 
+    void* shared_data[4] = { (void*) &p,
+                             (void*) &N,
+                             (void*) q,
+                             (void*) M };
+
+    matlib_index nsdata[num_threads][2];
+
+    pthpool_arg_t   arg[num_threads];
+    pthpool_task_t  task[num_threads];
+
+    /* define the block of data per thread */ 
+    matlib_index Np = M->nsparse/(num_threads);
+
+    for(i=0; i<num_threads-1; i++)
+    {
+        nsdata[i][0] = i*Np;
+        nsdata[i][1] = (i+1)*Np;
+        arg[i].shared_data    = shared_data; 
+        arg[i].nonshared_data = (void**)&nsdata[i];
+        arg[i].thread_index   = i;
+        /* Define the task */ 
+        task[i].function  = (void*)pfem1d_thfunc_ZCSRGMM2;
+        task[i].argument  = &arg[i];
+        mp[i].task = &task[i];
+    }
+    nsdata[i][0] = i*Np;
+    nsdata[i][1] = M->nsparse;
+    arg[i].shared_data    = shared_data; 
+    arg[i].nonshared_data = (void**)&nsdata[i];
+    arg[i].thread_index   = i;
+    /* Define the task */ 
+    task[i].function  = (void*)pfem1d_thfunc_ZCSRGMM2;
+    task[i].argument  = &arg[i];
+    mp[i].task = &task[i];
+
+    debug_body("%s", "created task");
+
+    pthpool_exec_task(num_threads, mp, task);
+
+    debug_exit("%s", "");
+}
 

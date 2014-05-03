@@ -125,6 +125,33 @@ matlib_real pfem1d_ZNorm2
 );
 
 
+void pfem1d_xm_nsparse_GMM
+/* Double - Assemble Global Mass Matrix*/ 
+(
+    matlib_index       p,
+    matlib_index       N,
+    matlib_xm          Q,
+    matlib_xm*         phi,
+    matlib_xm*         q,
+    matlib_xm_nsparse* M,
+    matlib_index       num_threads,
+    pthpool_data_t*    mp
+    
+);
+
+void pfem1d_zm_nsparse_GMM
+/* Double - Assemble Global Mass Matrix*/ 
+(
+    matlib_index       p,
+    matlib_index       N,
+    matlib_xm          Q,
+    matlib_zm*         phi,
+    matlib_zm*         q,
+    matlib_zm_nsparse* M,
+    matlib_index       num_threads,
+    pthpool_data_t*    mp
+    
+);
 
 
 

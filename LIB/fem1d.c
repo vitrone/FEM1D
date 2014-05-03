@@ -4570,17 +4570,22 @@ void fem1d_MEMI
         }
     }
     debug_exit("%s", "");
-}
+
+} /* fem1d_MEMI */ 
+
 /*============================================================================*/
 
 void fem1d_GMMSparsity
-/* Determine the sparsity structure in CSR format */ 
 (
     matlib_index            p,
     matlib_index            N,                        
     matlib_index*           row,                     
     matlib_index*           col                     
 )
+/* Determine the sparsity structure in CSR format 
+ *
+ *
+ * */ 
 {
 
     debug_enter( "degree of polynomial: %d, "
@@ -4699,7 +4704,8 @@ void fem1d_GMMSparsity
     }
     row[i] = s;
     debug_exit("%s", "");
-}
+
+}/* fem1d_GMMSparsity */
 /*============================================================================*/
 
 void fem1d_XCSRGMM
@@ -4868,15 +4874,18 @@ void fem1d_XCSRGMM
         }
     }
     row[i] = s;
+    
     debug_exit("%s", "");
-}
+
+} /* fem1d_XCSRGMM */ 
 /*============================================================================*/
+
 void fem1d_XCSRGMM2
-/* Double CSR - Assemble Global Mass Matrix*/ 
+/* Real CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index     p,
-    matlib_index     N,                        
-    matlib_xm q,
+    matlib_index   p,
+    matlib_index   N,                        
+    matlib_xm      q,
     matlib_real**  ugpmm_p                   
                                     
 )
@@ -5010,7 +5019,8 @@ void fem1d_XCSRGMM2
     }
 
     debug_exit("%s", "");
-}
+
+}/* fem1d_XCSRGMM2 */ 
 /*============================================================================*/
 
 void fem1d_ZCSRGMM
@@ -5179,9 +5189,9 @@ void fem1d_ZCSRGMM
 void fem1d_ZCSRGMM2
 /* Complex CSR - Assemble Global Mass Matrix*/ 
 (
-    matlib_index           p,
-    matlib_index           N,                        
-    matlib_zm       q,
+    matlib_index     p,
+    matlib_index     N,                        
+    matlib_zm        q,
     matlib_complex** ugpmm_p                  
 )
 {
@@ -5198,23 +5208,6 @@ void fem1d_ZCSRGMM2
     /* number of nonzero elements nnz = N*p*(p+3)/2+1;
      * */
     matlib_index s, i, l, l0, m, st;
-
-    
-    /* In this routine, we traverse the mass matrix row-wise
-     * and record the row entries and column index
-     * the mass matrix is symmetric therefore it suffices to just store the
-     * upper-triangular elements
-     * i-th row: 
-     * matrix elements: ugpmm[row[i]]... ugpmm[row[i+1]-1]
-     * column matlib_index   : col[row[i]] < col[row[i]+1] <...< col[row[i+1]-1]
-     * For symmetric matrices, col[row[i]]=i
-     *
-     * */ 
-
-    /* For quadrature it is important to note that 
-     * K_1 = (x_0, x_1), K_2 = (x_1, x_2),...
-     * basis element v_1 is peaked at x_1, v_2 at x_2,...
-     * */ 
 
     /* zero-th row 
      *
@@ -5316,6 +5309,7 @@ void fem1d_ZCSRGMM2
     debug_exit("%s", "");
 }
 /*============================================================================*/
+
 void fem1d_xm_sparse_GMM
 /* Complex - Assemble Global Mass Matrix*/ 
 (
@@ -5418,6 +5412,7 @@ void fem1d_xm_nsparse_GMM
                  p, N, nsparse, Q.lenc, Q.lenr);
 
     assert(Q.lenc==(p-1)*(p+4)/2+3);
+
     if(op_enum == FEM1D_GMM_INIT)
     {
         matlib_create_xm( Q.lenr, nsparse, phi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
@@ -5428,6 +5423,7 @@ void fem1d_xm_nsparse_GMM
         debug_body( "nr. of non-zero elements of M: %d", nnz);
         M->lenc   = dim;
         M->lenr   = dim;
+        M->nsparse = nsparse;
         M->rowIn  = calloc( dim+1, sizeof(matlib_index));
         M->colIn  = calloc(   nnz, sizeof(matlib_index));
         M->elem_p = (matlib_real**)calloc( nsparse, sizeof(matlib_real *));

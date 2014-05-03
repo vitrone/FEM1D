@@ -1365,6 +1365,99 @@ void test_pfem1d_ZNorm2(void)
     }
 }
 
+void test_pfem1d_ZGMM_general(matlib_index p)
+{
+    
+    debug_enter("polynomial degree: %d", p);
+    /* define number of timing experiments and repeatitions */ 
+    matlib_index num_exp    = 5;
+    matlib_index num_cycles = 10;
+
+    /* Create pthreads */
+    matlib_index num_threads = 4;
+    pthpool_data_t mp[num_threads];
+    
+    pthpool_create_threads(num_threads, mp);
+
+    matlib_index i, j;
+
+    matlib_index N, N0 = 200;
+    matlib_index P = 4*p;
+
+    /* define the domain */ 
+    matlib_real x_l = -5.0;
+    matlib_real x_r =  5.0;
+
+    matlib_xv xi, quadW;
+    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
+    
+    matlib_xm FM, IM, Q;
+
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+
+    legendre_LGLdataFM( xi, FM);
+    legendre_LGLdataIM( xi, IM);
+    fem1d_quadM( quadW, IM, &Q);
+
+    matlib_xv x;
+    matlib_zv u, U, Pvb1, Pvb2;
+    matlib_real dim;
+    matlib_real norm_actual, e_relative;
+
+    for(j=0; j<num_exp; j++)
+    {
+        /* generate the grid */ 
+        N = (j+1)*N0;
+
+        fem1d_ref2mesh (xi, N, x_l, x_r, &x);
+        debug_body("length of x: %d", x.len);
+
+
+        /* Provide the initial condition */
+        matlib_create_zv( x.len, &u, MATLIB_COL_VECT);
+
+        zGaussian(x, u);
+
+        dim = N*(p+1);
+        matlib_create_zv( dim, &U, MATLIB_COL_VECT);
+        matlib_create_zv( N*p+1, &Pvb1, MATLIB_COL_VECT);
+        matlib_create_zv( N*p+1, &Pvb2, MATLIB_COL_VECT);
+        fem1d_ZFLT( N, FM, u, U);
+
+        for(i=0; i<num_cycles; i++)
+        {
+            fem1d_ZPrjL2F( p, U, Pvb1);
+
+            pfem1d_ZPrjL2F(p, U, Pvb2, num_threads, mp);
+
+            /* Analyze error */ 
+            BEGIN_DTRACE
+                for(i=0; i<Pvb1.len; i++)
+                {
+                    debug_print( "[%d] -> serial: %0.16f% 0.16f, "
+                                 "parallel: %0.16f% 0.16f", 
+                                 i, Pvb1.elem_p[i], Pvb2.elem_p[i]);
+                }
+            END_DTRACE
+
+            norm_actual = matlib_znrm2(Pvb1);
+            matlib_zaxpy(-1.0, Pvb1, Pvb2);
+            e_relative = matlib_znrm2(Pvb2)/norm_actual;
+            debug_body("Relative error: % 0.16g", e_relative);
+            
+            CU_ASSERT_TRUE(e_relative<TOL);
+        }
+        matlib_free(x.elem_p);
+        matlib_free(u.elem_p);
+        matlib_free(Pvb1.elem_p);
+        matlib_free(Pvb2.elem_p);
+        matlib_free(U.elem_p);
+    }
+    
+    debug_body("%s", "signal threads to exit!");
+    pthpool_destroy_threads(num_threads, mp);
+}
 
 
 /*============================================================================+/

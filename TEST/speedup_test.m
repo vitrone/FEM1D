@@ -6,12 +6,12 @@ addpath ../MATLAB/
 
 
 num_threads = 7;
-p = 15;
+p = 5;
 mc = jetm(num_threads);
-mypath = 'pfem1d_XFLT'
+%mypath = 'pfem1d_XFLT'
 %mypath = 'pfem1d_XF2L'
 %mypath = 'pfem1d_XPrjL2F'
-%mypath = 'pfem1d_XNorm2'
+mypath = 'pfem1d_XNorm2'
 %mypath = 'pfem1d_ZFLT'
 %mypath = 'pfem1d_ZF2L'
 %mypath = 'pfem1d_ZPrjL2F'
