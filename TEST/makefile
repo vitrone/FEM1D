@@ -70,10 +70,10 @@ $(TSTBIN)/% : $(TSTBIN)/%.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
 
 $(TSTBIN)/%.o : %.c
-	echo "Building object files..."
+	@echo "Building object files..."
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
 
 clean :
-	rm -f $(OBJECTS)
+	@rm -f $(OBJECTS)
 

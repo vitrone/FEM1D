@@ -86,10 +86,6 @@ matlib_real test_matlib_xsolver_general
     void  (*func_p)(matlib_xv, matlib_xv), 
     void  (*potential_p)(matlib_xv, matlib_xv)
 )
-/* 
- * potential function: phi(x)
- * Compute mass matrix for phi(x)u(x)
- * */ 
 {
 
     debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );

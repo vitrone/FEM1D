@@ -14,7 +14,7 @@
 #include <errno.h>
 #include "mkl.h"
 
-#define NDEBUG
+//#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
@@ -1471,6 +1471,124 @@ void test_fem1d_ZGMM1(void)
 
     } 
 }
+/*============================================================================*/
+
+void test_fem1d_zm_nsparse_GMM_general
+(
+    matlib_index p,
+    matlib_index nr_LGL,
+    matlib_index N,
+    matlib_real  domain[2],
+    void  (*potential_p)(matlib_xv, matlib_real, matlib_real, matlib_zm)
+)
+{
+
+    debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );
+    matlib_index i, j;
+    matlib_index P = nr_LGL-1;
+
+    matlib_real x_l = domain[0];
+    matlib_real x_r = domain[1];
+
+    matlib_xv xi, quadW;
+    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
+    
+    matlib_xm FM, IM, Q;
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+
+    legendre_LGLdataFM( xi, FM);
+    legendre_LGLdataIM( xi, IM);
+    fem1d_quadM( quadW, IM, &Q);
+
+    /* generate the grid */ 
+    matlib_xv x;
+    fem1d_ref2mesh (xi, N, x_l, x_r, &x);
+    debug_body("length of x: %d", x.len);
+
+    matlib_real t = 0, dt = 1.0e-3;
+    matlib_zm phi, q;
+    matlib_zm_nsparse M;
+    matlib_zm_sparse M1;
+    matlib_index nsparse = 10;
+    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_INIT);
+    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M, FEM1D_GET_SPARSITY_ONLY);
+
+    matlib_zv v1 = {.len = M.rowIn[M.lenc]};
+    matlib_zv v2 = {.len = M.rowIn[M.lenc]};
+    matlib_zv phi1 = {.len = x.len};
+
+    matlib_real norm_actual, e_relative;
+    for(i=0; i<5; i++)
+    {
+        (*potential_p)(x, t, dt, phi);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GET_NZE_ONLY);
+        for(j=0; j<nsparse; j++)
+        {
+            phi1.elem_p = phi.elem_p + j*x.len;
+            fem1d_zm_sparse_GMM(p, Q, phi1, &M1);
+
+            v1.elem_p = *(M.elem_p + j);
+            v2.elem_p = M1.elem_p;
+            BEGIN_DTRACE
+                for(i=0; i<v1.len; i++)
+                {
+                    debug_print( "[%d]-> v1: % 0.16f%+0.16f, v2: % 0.16f%+0.16f",
+                                 i, v1.elem_p[i], v2.elem_p[i]);
+                }
+            END_DTRACE
+            
+            norm_actual = matlib_znrm2(v2);
+            matlib_zaxpy(-1.0, v2, v1);
+            e_relative = matlib_znrm2(v1)/norm_actual;
+
+            debug_exit("Relative error(%d): % 0.16g", j, e_relative);
+            CU_ASSERT_TRUE(e_relative<TOL);
+
+            matlib_free(M1.rowIn);
+            matlib_free(M1.colIn);
+            matlib_free(M1.elem_p);
+            t += dt;
+        }
+    }
+    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_FREE);
+
+}
+
+void linear_timedependent_zpotential
+( 
+    matlib_xv      x, 
+    matlib_real    t0, 
+    matlib_real    dt, 
+    matlib_zm      y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  *(x.elem_p+i)*cos(2*M_PI*(t0));
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
+}
+
+void test_fem1d_zm_nsparse_GMM(void)
+{
+    matlib_index p, nr_LGL;
+    matlib_index N = 50;
+    matlib_real domain[2] = {-5.0, 5.0};
+    matlib_real e_relative;
+
+    p = 4;
+    nr_LGL = 2*p+1;
+    test_fem1d_zm_nsparse_GMM_general( p, nr_LGL, N, domain,
+                                       linear_timedependent_zpotential);
+}
 
 
 /*============================================================================
@@ -1495,19 +1613,20 @@ int main()
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Interpolation for polynomial"           , test_interpolation1 },
-        { "Interpolation for Gaussian"             , test_interpolation2 },
-        { "Interpolation for Gaussian(t)"          , test_interpolation3 },
-        { "Interpolation for complex Gaussian"     , test_interpolation4 },
-        { "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
-        { "L2-Norm for Real"                       , test_L2_dnorm       },
-        { "L2-Norm for Complex"                    , test_L2_znorm       },
-        { "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
-        { "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
-        { "Quadrature Matrix"                      , test_fem1d_quadM1   },
-        { "MEMI"                                   , test_fem1d_MEMI     },
-        { "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
-        { "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
+        //{ "Interpolation for polynomial"           , test_interpolation1 },
+        //{ "Interpolation for Gaussian"             , test_interpolation2 },
+        //{ "Interpolation for Gaussian(t)"          , test_interpolation3 },
+        //{ "Interpolation for complex Gaussian"     , test_interpolation4 },
+        //{ "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
+        //{ "L2-Norm for Real"                       , test_L2_dnorm       },
+        //{ "L2-Norm for Complex"                    , test_L2_znorm       },
+        //{ "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
+        //{ "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
+        //{ "Quadrature Matrix"                      , test_fem1d_quadM1   },
+        //{ "MEMI"                                   , test_fem1d_MEMI     },
+        //{ "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
+        //{ "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
+        { "N-Sparse"                          , test_fem1d_zm_nsparse_GMM},
         CU_TEST_INFO_NULL,
     };
 

@@ -2,6 +2,8 @@
  | File: Cunit_fem1d_Schroedinger.c 
  | Description: Test 
  |
+ | Boundary conditions employed for the problems used for testing and 
+ | benchmarking the fem1d library is Dirichlet boundary conditions.
  |
 /+============================================================================*/
 #include <pthread.h>
@@ -44,6 +46,33 @@ int clean_suite(void)
 
 /*============================================================================*/
 
+void fem1d_zm_sparse_GSM
+/* Global Stiffness Matrix */ 
+(
+    matlib_index     N,
+    matlib_complex   coeff,
+    matlib_zm_sparse M
+)
+{
+    debug_enter("%s", "");
+    matlib_index i;
+
+    M.elem_p[0] =  coeff/2.0 + M.elem_p[0];
+    M.elem_p[1] = -coeff/2.0 + M.elem_p[1];
+    for(i=1; i<N; i++)
+    {
+        M.elem_p[M.rowIn[i]]   =  coeff     + M.elem_p[M.rowIn[i]  ];
+        M.elem_p[M.rowIn[i]+1] = -coeff/2.0 + M.elem_p[M.rowIn[i]+1];
+    }
+    M.elem_p[M.rowIn[i]] = coeff/2.0 + M.elem_p[M.rowIn[i]];
+    
+    for(i=N+1; i<M.lenc; i++)
+    {
+        M.elem_p[M.rowIn[i]] = coeff + M.elem_p[M.rowIn[i]];
+    }
+    debug_exit("%s", "");
+}
+
 void fem1d_zm_nsparse_GSM
 /* Global Stiffness Matrix */ 
 (
@@ -74,6 +103,24 @@ void fem1d_zm_nsparse_GSM
     }
     debug_exit("%s", "");
 }
+void matlib_zm_sparse_scale
+(
+    matlib_complex   coeff,
+    matlib_zm_sparse A,
+    matlib_zm_sparse B
+)
+{
+    matlib_index i, j;
+
+    for(i=0; i<A.lenc; i++)
+    {
+        for(j=A.rowIn[i]; j<A.rowIn[i+1]; j++)
+        {
+            B.elem_p[j] = coeff*A.elem_p[j];
+        }
+    }
+}
+
 
 /*============================================================================+/
 | Example 1.:
@@ -81,7 +128,169 @@ void fem1d_zm_nsparse_GSM
 | iu_t + u_xx + phi(x) u= 0
 | t=0: u(x,t) = u_0(x) -> Initial data
 | This example deal with time-independent real potential.
+|
+| Time discrete form:
+| i/(rho*J^2)(v_xi, psi_xi)+(Phi*v,psi) = (u,psi) where u -> 2 * v - u
+| Phi = 1 + (-i/rho) phi(x)
+|
 /+============================================================================*/
+matlib_real solve_Schroedinger_IVP
+(
+    matlib_index p,
+    matlib_index nr_LGL,
+    matlib_index N,
+    matlib_real domain[2],
+    matlib_real dt,
+    matlib_index Nt,
+    void (*func_p)(matlib_xv, matlib_real, matlib_zv),
+    void (*potential_p)(matlib_complex [], matlib_xv, matlib_zv)
+)
+/* 
+ * */ 
+{
+
+    debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );
+    matlib_index i, j;
+    matlib_index P = nr_LGL-1;
+
+    matlib_real x_l = domain[0];
+    matlib_real x_r = domain[1];
+
+    matlib_xv xi, quadW;
+    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
+    
+    matlib_xm FM, IM, Q;
+    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+
+    legendre_LGLdataFM( xi, FM);
+    legendre_LGLdataIM( xi, IM);
+    fem1d_quadM( quadW, IM, &Q);
+
+    /* generate the grid */ 
+    matlib_xv x;
+    fem1d_ref2mesh (xi, N, x_l, x_r, &x);
+    debug_body("length of x: %d", x.len);
+
+    /* time discretization */ 
+
+    matlib_real ta[2] = {0, Nt*dt};
+
+    /* Provide the initial condition */
+    matlib_zv u0, u_exact, u_computed;
+    matlib_create_zv( x.len,         &u0, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,    &u_exact, MATLIB_COL_VECT);
+    matlib_create_zv( x.len, &u_computed, MATLIB_COL_VECT);
+    
+    (*func_p)(x, ta[0], u0);
+    DEBUG_PRINT_ZV(u0, "%s :", "Initial condition");
+    
+    /* Assemble the global mass matrix */ 
+    matlib_zv phi;
+    matlib_create_zv( x.len, &phi, MATLIB_COL_VECT);
+
+    matlib_real irho = dt/2.0;
+    matlib_real J    = 0.5*(x_r-x_l)/N;
+    matlib_complex coeff = 0.0 + I*irho/(J*J);
+    matlib_complex time_coeff[2] = {1.0, -I*irho};
+    debug_body("coeff: %0.16f%+0.16fi", coeff);
+
+    (*potential_p)(time_coeff, x, phi);
+
+    matlib_zm_sparse M;
+    fem1d_zm_sparse_GMM(p, Q, phi, &M);
+
+    
+    /* Global Stiffness-Mass Matrix */ 
+    fem1d_zm_sparse_GSM(N, coeff, M);
+
+    BEGIN_DTRACE
+        debug_print("dimension of the sparse square matrix: %d", M.lenc);
+        for(i=0; i<M.lenc; i++)
+        {
+            for(j=M.rowIn[i]; j<M.rowIn[i+1]; j++)
+            {
+                debug_print( "M(%d,%d): % 0.16f %+0.16fi", 
+                             i, M.colIn[j], M.elem_p[j]);
+            }
+        }
+    END_DTRACE
+
+    /* Solve the equation while marching in time 
+     *
+     * Linear system M * V_vb = Pvb 
+     * */
+    
+    matlib_zv U_tmp, V_tmp, V_vb, Pvb;
+    matlib_real dim = N*(p+1);
+    matlib_create_zv( M.lenc,   &Pvb, MATLIB_COL_VECT);
+    matlib_create_zv( M.lenc,  &V_vb, MATLIB_COL_VECT);
+    matlib_create_zv(    dim, &V_tmp, MATLIB_COL_VECT);
+    matlib_create_zv(    dim, &U_tmp, MATLIB_COL_VECT);
+
+    fem1d_ZFLT( N, FM, u0, U_tmp);
+
+    matlib_real t = 0, norm_actual;
+    matlib_xv e_relative;
+    matlib_create_xv( Nt, &e_relative, MATLIB_COL_VECT);
+
+    pardiso_solver_t data = { .nsparse  = 1, 
+                              .mnum     = 1, 
+                              .sol_enum = PARDISO_LHS, 
+                              .mtype    = PARDISO_COMPLEX_SYM,
+                              .smat_p   = (void*)&M,
+                              .rhs_p    = (void*)&Pvb,
+                              .sol_p    = (void*)&V_vb};
+
+    data.phase_enum = PARDISO_INIT;
+    matlib_pardiso(&data);
+
+    data.phase_enum = PARDISO_ANALYSIS_AND_FACTOR;
+    matlib_pardiso(&data);
+    for (i=1; i<Nt+1; i++)
+    {
+        debug_body("begin iteration: %d", i);
+        fem1d_ZPrjL2F(p, U_tmp, Pvb);
+
+        data.phase_enum = PARDISO_SOLVE_AND_REFINE;
+        matlib_pardiso(&data);
+        
+        fem1d_ZF2L(p, V_vb, V_tmp);
+
+        /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
+        matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
+        t += dt;
+
+        (*func_p)(x, t, u_exact);
+        fem1d_ZFLT(N, FM, u_exact, V_tmp);
+
+        /* Error analysis */ 
+        norm_actual = fem1d_ZNorm2(p, N, V_tmp);
+        matlib_zaxpy(-1.0, U_tmp, V_tmp );
+        e_relative.elem_p[i-1] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
+    }
+    data.phase_enum = PARDISO_FREE;
+    matlib_pardiso(&data);
+
+    (*func_p)(x, ta[1], u_exact);
+    fem1d_ZILT(N, IM, U_tmp, u_computed);
+
+    /* Write the final evolution data to a file */ 
+    matlib_xzvwrite_csv( "initial_state.dat", 1, &x, 1, &u0);
+
+    matlib_zv tmp_mat[2] ={u_exact, u_computed }; 
+    matlib_xzvwrite_csv(   "final_state.dat", 1, &x, 2, tmp_mat);
+    
+    matlib_xvwrite_csv("e_relative.dat", 1, &e_relative);
+    DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
+
+    matlib_real r = e_relative.elem_p[Nt-1];
+    debug_exit("Relative error: % 0.16g", r);
+    return(r);
+    
+    
+}
+
 void solution_Gaussian
 (
     matlib_xv   x,
@@ -166,181 +375,6 @@ void solution_Hermite
     debug_exit("%s", "");
 }
 /*============================================================================*/
-matlib_real solve_Schroedinger_IVP
-(
-    matlib_index p,
-    matlib_index nr_LGL,
-    matlib_index N,
-    matlib_real domain[2],
-    matlib_real dt,
-    matlib_index Nt,
-    void (*func_p)(matlib_xv, matlib_real, matlib_zv),
-    void (*potential_p)(matlib_complex [], matlib_xv, matlib_zv)
-)
-/* 
- * */ 
-{
-
-    debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );
-    matlib_index i, j;
-    matlib_index P = nr_LGL-1;
-
-    matlib_real x_l = domain[0];
-    matlib_real x_r = domain[1];
-
-    matlib_xv xi, quadW;
-    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
-    
-    matlib_xm FM, IM, Q;
-    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-
-    legendre_LGLdataFM( xi, FM);
-    legendre_LGLdataIM( xi, IM);
-    fem1d_quadM( quadW, IM, &Q);
-
-    /* generate the grid */ 
-    matlib_xv x;
-    fem1d_ref2mesh (xi, N, x_l, x_r, &x);
-    debug_body("length of x: %d", x.len);
-
-    /* time discretization */ 
-
-    matlib_real ta[2] = {0, Nt*dt};
-
-    /* Provide the initial condition */
-    matlib_zv u0;
-    matlib_create_zv( x.len, &u0, MATLIB_COL_VECT);
-    
-    (*func_p)(x, ta[0], u0);
-    DEBUG_PRINT_ZV(u0, "%s :", "Initial condition");
-    
-    /* Assemble the global mass matrix */ 
-    matlib_zv phi;
-    matlib_create_zv( x.len, &phi, MATLIB_COL_VECT);
-
-    matlib_real irho = dt/2.0;
-    matlib_real J   = 0.5*(x_r-x_l)/N;
-    matlib_complex coeff = 0.0 + I*irho/(J*J);
-    matlib_complex time_coeff[2] = {1.0, -I*irho};
-    debug_body("coeff: %0.16f%+0.16fi", coeff);
-
-    (*potential_p)(time_coeff, x, phi);
-
-    matlib_zm_sparse M;
-    fem1d_zm_sparse_GMM(p, Q, phi, &M);
-
-    
-    /* Setup the sparse linear system */
-
-    M.elem_p[0] =  coeff/2.0 + M.elem_p[0];
-    M.elem_p[1] = -coeff/2.0 + M.elem_p[1];
-    for(i=1; i<N; i++)
-    {
-        M.elem_p[M.rowIn[i]]   =  coeff     + M.elem_p[M.rowIn[i]  ];
-        M.elem_p[M.rowIn[i]+1] = -coeff/2.0 + M.elem_p[M.rowIn[i]+1];
-    }
-    M.elem_p[M.rowIn[i]] = coeff/2.0 + M.elem_p[M.rowIn[i]];
-    
-    for(i=N+1; i<M.lenc; i++)
-    {
-        M.elem_p[M.rowIn[i]] = coeff + M.elem_p[M.rowIn[i]];
-    }
-
-    BEGIN_DTRACE
-        debug_print("dimension of the sparse square matrix: %d", M.lenc);
-        for(i=0; i<M.lenc; i++)
-        {
-            for(j=M.rowIn[i]; j<M.rowIn[i+1]; j++)
-            {
-                debug_print("M(%d,%d): % 0.16f %+0.16fi", i, M.colIn[j], M.elem_p[j]);
-            }
-        }
-    END_DTRACE
-
-    /* Solve the equation while marching in time 
-     *
-     * Linear system M * V_vb = Pvb 
-     * */
-    
-    matlib_zv U_tmp, V_tmp, V_vb, U_vb, Pvb;
-    matlib_real dim = N*(p+1);
-    matlib_create_zv( M.lenc,   &Pvb, MATLIB_COL_VECT);
-    matlib_create_zv( M.lenc,  &V_vb, MATLIB_COL_VECT);
-    matlib_create_zv(    dim, &V_tmp, MATLIB_COL_VECT);
-    matlib_create_zv(    dim, &U_tmp, MATLIB_COL_VECT);
-
-    fem1d_ZFLT( N, FM, u0, U_tmp);
-
-    /* ONLY FOR ERROR: Compute the exact solution and make a forward LT */ 
-    matlib_xv xii, quadWi, x1;
-    legendre_LGLdataLT1( p, TOL, &xii, &quadWi);
-    fem1d_ref2mesh (xii, N, x_l, x_r, &x1);
-    matlib_xm IMi;
-    matlib_create_xm( xii.len, p+1, &IMi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-    legendre_LGLdataIM( xii, IMi);
-    matlib_zv u_exact, u_computed;
-    matlib_create_zv( x1.len,    &u_exact, MATLIB_COL_VECT);
-    matlib_create_zv( x1.len, &u_computed, MATLIB_COL_VECT);
-
-    matlib_real t = 0, norm_actual;
-    matlib_xv e_relative;
-    matlib_create_xv( Nt, &e_relative, MATLIB_COL_VECT);
-
-    pardiso_solver_t data = { .nsparse = 1, 
-                              .mnum     = 1, 
-                              .sol_enum = PARDISO_LHS, 
-                              .mtype   = PARDISO_COMPLEX_SYM,
-                              .smat_p  = (void*)&M,
-                              .rhs_p   = (void*)&Pvb,
-                              .sol_p   = (void*)&V_vb};
-
-    data.phase_enum = PARDISO_INIT;
-    matlib_pardiso(&data);
-
-    data.phase_enum = PARDISO_ANALYSIS_AND_FACTOR;
-    matlib_pardiso(&data);
-    for (i=1; i<Nt+1; i++)
-    {
-        debug_print("begin iteration: %d", i);
-        fem1d_ZPrjL2F(p, U_tmp, Pvb);
-
-        data.phase_enum = PARDISO_SOLVE_AND_REFINE;
-        matlib_pardiso(&data);
-        
-        fem1d_ZF2L(p, V_vb, V_tmp);
-
-        //for(j=0; j<U_tmp.len; j++)
-        //{
-        //    U_tmp.elem_p[j] = 2.0 * V_tmp.elem_p[j]-U_tmp.elem_p[j];
-        //}
-
-        /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
-        matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
-        t += dt;
-
-        (*func_p)(x1, t, u_exact);
-        fem1d_ZILT(N, IMi, U_tmp, u_computed);
-
-        /* Error analysis */ 
-        norm_actual = matlib_znrm2(u_exact);
-        matlib_zaxpy(-1.0, u_exact, u_computed);
-        e_relative.elem_p[i-1] = matlib_znrm2(u_computed)/norm_actual;
-    }
-    data.phase_enum = PARDISO_FREE;
-    matlib_pardiso(&data);
-
-    (*func_p)(x1, ta[1], u_exact);
-    fem1d_ZILT(N, IMi, U_tmp, u_computed);
-
-    DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
-
-    matlib_real r = e_relative.elem_p[Nt-1];
-    debug_exit("Relative error: % 0.16g", r);
-    return(r);
-    
-    
-}
 void test_solve_Schroedinger_IVP_1a(void)
 {
     matlib_index p = 4;
@@ -355,7 +389,7 @@ void test_solve_Schroedinger_IVP_1a(void)
     e_relative = solve_Schroedinger_IVP( p, nr_LGL, N, domain, dt, Nt,
                                          solution_Gaussian,
                                          constant_zpotential);
-    CU_ASSERT_TRUE(e_relative<1e-3);
+    CU_ASSERT_TRUE(e_relative<1e-6);
 
 }
 void test_solve_Schroedinger_IVP_1b(void)
@@ -372,7 +406,7 @@ void test_solve_Schroedinger_IVP_1b(void)
     e_relative = solve_Schroedinger_IVP( p, nr_LGL, N, domain, dt, Nt,
                                          solution_Hermite,
                                          harmonic_zpotential);
-    CU_ASSERT_TRUE(e_relative<1e-3);
+    CU_ASSERT_TRUE(e_relative<1e-6);
 
 }
 
@@ -382,33 +416,8 @@ void test_solve_Schroedinger_IVP_1b(void)
 | iu_t + u_xx + phi(x,t) u= 0
 | t=0: u(x,t) = u_0(x) -> Initial data
 | This example deals with time-dependent real potential.
-|   2a.: Let phi = phit(t)*phix(x).
-|   2b.: Let phi = phi(x,t).
+|   phi = x cos(mu*t).
 /+============================================================================*/
-void linear_timedependent_zpotential
-( 
-    matlib_complex time_coeff[2], 
-    matlib_xv x, 
-    matlib_real    t0, 
-    matlib_real    dt, 
-    matlib_zm y
-)
-{
-    debug_enter("%s", "");
-    matlib_index i, j;
-    for(j=0; j<y.lenr; j++)
-    {
-        for (i=0; i<x.len; i++)
-        {
-            *(y.elem_p) =  time_coeff[0]-
-                           0.5*time_coeff[1]**(x.elem_p+i)*
-                           (cos(2*M_PI*(t0))+cos(2*M_PI*(t0+dt)));
-            y.elem_p++;
-        }
-        t0 += dt;
-    }
-    debug_exit("%s", "");
-}
 matlib_real solve_Schroedinger_IVP2
 (
     matlib_index p,
@@ -417,7 +426,7 @@ matlib_real solve_Schroedinger_IVP2
     matlib_real domain[2],
     matlib_real dt,
     matlib_index Nt,
-    void  (*func_p)(matlib_xv, matlib_real, matlib_zv),
+    void  (*func_p)(matlib_real*, matlib_xv, matlib_real, matlib_zv),
     void  (*potential_p)(matlib_complex*, matlib_xv, matlib_real, matlib_real, matlib_zm)
 )
 /* 
@@ -435,8 +444,8 @@ matlib_real solve_Schroedinger_IVP2
     legendre_LGLdataLT1( P, TOL, &xi, &quadW);
     
     matlib_xm FM, IM, Q;
-    matlib_create_xm( p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
-    matlib_create_xm( xi.len, p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm(    p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len,    p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
 
     legendre_LGLdataFM( xi, FM);
     legendre_LGLdataIM( xi, IM);
@@ -452,32 +461,33 @@ matlib_real solve_Schroedinger_IVP2
     matlib_real ta[2] = {0, Nt*dt};
 
     /* Provide the initial condition */
-    matlib_zv u0;
-    matlib_create_zv( x.len, &u0, MATLIB_COL_VECT);
+    matlib_zv u0, u_exact, u_computed;
+    matlib_create_zv( x.len,         &u0, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,    &u_exact, MATLIB_COL_VECT);
+    matlib_create_zv( x.len, &u_computed, MATLIB_COL_VECT);
     
-    (*func_p)(x, ta[0], u0);
+    matlib_real params[2] = {1.0, 2*M_PI};
+    //matlib_real params[2] = {0.0, 2*M_PI};
+    (*func_p)(params, x, ta[0], u0);
     //DEBUG_PRINT_ZV(u0, "%s :", "Initial condition");
     
     /* Assemble the global mass matrix */ 
 
     matlib_real irho = dt/2.0;
-    matlib_real J   = 0.5*(x_r-x_l)/N;
+    matlib_real J    = 0.5*(x_r-x_l)/N;
     matlib_complex coeff = 0.0 + I*irho/(J*J);
     matlib_complex time_coeff[2] = {1.0, -I*irho};
+    //matlib_complex time_coeff[2] = {1.0, 0};
     debug_body("coeff: %0.16f%+0.16fi", coeff);
 
 
     matlib_zm phi, q;
     matlib_zm_nsparse M;
-    matlib_index nsparse = Nt;
+    matlib_index nsparse = 10;
     fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_INIT);
-    (*potential_p)(time_coeff, x, 0, dt, phi);
-    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GET_SPARSITY_NZE);
-    fem1d_zm_nsparse_GSM(N, coeff, M);
+    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, NULL, NULL, &M, FEM1D_GET_SPARSITY_ONLY);
     
     /* Setup the sparse linear system */
-
-
     /* Solve the equation while marching in time 
      *
      * Linear system M * V_vb = Pvb 
@@ -492,31 +502,23 @@ matlib_real solve_Schroedinger_IVP2
 
     fem1d_ZFLT( N, FM, u0, U_tmp);
 
-    /* ONLY FOR ERROR: Compute the exact solution and make a forward LT */ 
-    matlib_xv xii, quadWi, x1;
-    legendre_LGLdataLT1( p, TOL, &xii, &quadWi);
-    fem1d_ref2mesh (xii, N, x_l, x_r, &x1);
-    matlib_xm IMi;
-    matlib_create_xm( xii.len, p+1, &IMi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-    legendre_LGLdataIM( xii, IMi);
-    matlib_zv u_exact, u_computed;
-    matlib_create_zv( x1.len,    &u_exact, MATLIB_COL_VECT);
-    matlib_create_zv( x1.len, &u_computed, MATLIB_COL_VECT);
 
     matlib_real t = 0, norm_actual;
     matlib_xv e_relative;
     matlib_create_xv( Nt, &e_relative, MATLIB_COL_VECT);
 
-    pardiso_solver_t data = { .nsparse = Nt, 
-                              .mnum    = 1, 
-                              .mtype   = PARDISO_COMPLEX_SYM,
+    pardiso_solver_t data = { .nsparse  = nsparse, 
+                              .mnum     = 1, 
+                              .mtype    = PARDISO_COMPLEX_SYM,
                               .sol_enum = PARDISO_LHS, 
-                              .smat_p  = (void*)&M,
-                              .rhs_p   = (void*)&Pvb,
-                              .sol_p   = (void*)&V_vb};
-    debug_body("%s", "SolverDATA initialized");
-    matlib_complex *ptr;
+                              .smat_p   = (void*)&M,
+                              .rhs_p    = (void*)&Pvb,
+                              .sol_p    = (void*)&V_vb};
+
+    debug_body("%s", "Solver data initialized");
+
     BEGIN_DTRACE
+    matlib_complex *ptr;
         for(matlib_index k = 0; k< nsparse; k++)
         {
             debug_print("dimension of the sparse square matrix: %d", M.lenc);
@@ -534,63 +536,434 @@ matlib_real solve_Schroedinger_IVP2
     data.phase_enum = PARDISO_INIT;
     matlib_pardiso(&data);
 
-    for (i=1; i<Nt+1; i++)
+    matlib_index Nt_ = Nt/nsparse;
+    for (i=0; i<Nt_; i++)
     {
-        debug_print("begin iteration: %d", i);
+        (*potential_p)(time_coeff, x, t, dt, phi);
+        fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GET_NZE_ONLY);
+        fem1d_zm_nsparse_GSM(N, coeff, M);
+
+        for(j=0; j<nsparse; j++)
+        {
+            debug_body("begin iteration: %d", i*nsparse+j);
+            fem1d_ZPrjL2F(p, U_tmp, Pvb);
+
+            data.mnum = j+1;
+            data.phase_enum = PARDISO_ANALYSIS_AND_FACTOR;
+            matlib_pardiso(&data);
+
+            data.phase_enum = PARDISO_SOLVE_AND_REFINE;
+            matlib_pardiso(&data);
+            
+            fem1d_ZF2L(p, V_vb, V_tmp);
+
+            /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
+            matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
+            t += dt;
+
+            (*func_p)(params, x, t, u_exact);
+            fem1d_ZFLT(N, FM, u_exact, V_tmp);
+
+            /* Error analysis */ 
+            norm_actual = fem1d_ZNorm2(p, N, V_tmp);
+            matlib_zaxpy(-1.0, U_tmp, V_tmp );
+            e_relative.elem_p[j+i*nsparse] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
+        }
+    }
+    assert(fabs(ta[1]-t)<TOL);
+    data.phase_enum = PARDISO_FREE;
+    matlib_pardiso(&data);
+    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_FREE);
+
+    (*func_p)(params, x, ta[1], u_exact);
+    fem1d_ZILT(N, IM, U_tmp, u_computed);
+
+    /* Write the final evolution data to a file */ 
+    matlib_xzvwrite_csv( "initial_state.dat", 1, &x, 1, &u0);
+
+    matlib_zv tmp_mat[2] = {u_exact, u_computed }; 
+    matlib_xzvwrite_csv( "final_state.dat", 1, &x, 2, tmp_mat);
+    
+    matlib_xvwrite_csv("e_relative.dat", 1, &e_relative);
+    DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
+
+    matlib_real r = e_relative.elem_p[Nt-1];
+    debug_exit("Relative error: % 0.16g", r);
+    return(r);
+}
+
+
+matlib_real solve_Schroedinger_IVP3
+(
+    matlib_index p,
+    matlib_index nr_LGL,
+    matlib_index N,
+    matlib_real domain[2],
+    matlib_real dt,
+    matlib_index Nt,
+    void  (*func_p)(matlib_real*, matlib_xv, matlib_real, matlib_zv)
+)
+/* 
+ * */ 
+{
+
+    debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );
+    matlib_index i, j;
+    matlib_index P = nr_LGL-1;
+
+    matlib_real x_l = domain[0];
+    matlib_real x_r = domain[1];
+
+    matlib_xv xi, quadW;
+    legendre_LGLdataLT1( P, TOL, &xi, &quadW);
+    
+    matlib_xm FM, IM, Q;
+    matlib_create_xm(    p+1, xi.len, &FM, MATLIB_ROW_MAJOR, MATLIB_NO_TRANS);    
+    matlib_create_xm( xi.len,    p+1, &IM, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
+
+    legendre_LGLdataFM( xi, FM);
+    legendre_LGLdataIM( xi, IM);
+    fem1d_quadM( quadW, IM, &Q);
+
+    /* generate the grid */ 
+    matlib_xv x;
+    fem1d_ref2mesh (xi, N, x_l, x_r, &x);
+    debug_body("length of x: %d", x.len);
+
+    /* time discretization */ 
+
+    matlib_real ta[2] = {0, Nt*dt};
+
+    /* Provide the initial condition */
+    matlib_zv u0, u_exact, u_computed;
+    matlib_create_zv( x.len,         &u0, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,    &u_exact, MATLIB_COL_VECT);
+    matlib_create_zv( x.len, &u_computed, MATLIB_COL_VECT);
+    
+    matlib_real params[2] = {1.0, 2*M_PI};
+    //matlib_real params[2] = {0.0, 2*M_PI};
+    (*func_p)(params, x, ta[0], u0);
+    //DEBUG_PRINT_ZV(u0, "%s :", "Initial condition");
+    
+    /* Assemble the global mass matrix */ 
+
+    matlib_real irho = dt/2.0;
+    matlib_real J    = 0.5*(x_r-x_l)/N;
+    matlib_complex coeff[2] = {0.0 + I*irho/(J*J), 0.0};
+    matlib_complex time_coeff[2] = {1.0, -I*irho};
+    //matlib_complex time_coeff[2] = {1.0, 0};
+    //debug_body("coeff: %0.16f%+0.16fi", coeff);
+
+
+    matlib_zv phi;
+    matlib_create_zv( x.len, &phi, MATLIB_COL_VECT);
+    for(i=0; i<phi.len; i++)
+    {
+        phi.elem_p[i] = 1.0;
+    }
+
+    matlib_zm_sparse M, GSMM;
+    fem1d_zm_sparse_GMM(p, Q, phi, &M);
+    fem1d_zm_sparse_GMM(p, Q, phi, &GSMM);
+    
+    /* Setup the sparse linear system */
+    /* Solve the equation while marching in time 
+     *
+     * Linear system M * V_vb = Pvb 
+     * */
+    
+    matlib_zv U_tmp, V_tmp, V_vb, U_vb, Pvb;
+    matlib_real dim = N*(p+1);
+    matlib_create_zv( M.lenc,   &Pvb, MATLIB_COL_VECT);
+    matlib_create_zv( M.lenc,  &V_vb, MATLIB_COL_VECT);
+    matlib_create_zv(    dim, &V_tmp, MATLIB_COL_VECT);
+    matlib_create_zv(    dim, &U_tmp, MATLIB_COL_VECT);
+
+    fem1d_ZFLT( N, FM, u0, U_tmp);
+
+
+    matlib_real t = 0, norm_actual;
+    matlib_xv e_relative;
+    matlib_create_xv( Nt, &e_relative, MATLIB_COL_VECT);
+
+    pardiso_solver_t data = { .nsparse  = 1, 
+                              .mnum     = 1, 
+                              .mtype    = PARDISO_COMPLEX_SYM,
+                              .sol_enum = PARDISO_LHS, 
+                              .smat_p   = (void*) &GSMM,
+                              .rhs_p    = (void*) &Pvb,
+                              .sol_p    = (void*) &V_vb};
+
+    debug_body("%s", "Solver data initialized");
+
+    BEGIN_DTRACE
+        debug_print("dimension of the sparse square matrix: %d", M.lenc);
+        for(i=0; i<M.lenc; i++)
+        {
+            for(j=M.rowIn[i]; j<M.rowIn[i+1]; j++)
+            {
+                debug_print( "M(%d,%d): % 0.16f %+0.16fi", 
+                             i, M.colIn[j], M.elem_p[j]);
+            }
+        }
+    END_DTRACE
+
+    data.phase_enum = PARDISO_INIT;
+    matlib_pardiso(&data);
+
+    for (i=0; i<Nt; i++)
+    {
+
+        //coeff[1] = 1.0-I*irho*cos(2.0*M_PI*(t+dt/2.0));
+        coeff[1] = 1.0-I*irho*0.5*(cos(2.0*M_PI*t)+cos(2.0*M_PI*(t+dt)));
+        matlib_zm_sparse_scale(coeff[1], M, GSMM);
+        fem1d_zm_sparse_GSM(N, coeff[0], GSMM);
+
+        debug_body("begin iteration: %d", i);
         fem1d_ZPrjL2F(p, U_tmp, Pvb);
 
         data.phase_enum = PARDISO_ANALYSIS_AND_FACTOR;
         matlib_pardiso(&data);
 
         data.phase_enum = PARDISO_SOLVE_AND_REFINE;
-        data.mnum = i;
         matlib_pardiso(&data);
         
         fem1d_ZF2L(p, V_vb, V_tmp);
-
-        //for(j=0; j<U_tmp.len; j++)
-        //{
-        //    U_tmp.elem_p[j] = 2.0 * V_tmp.elem_p[j]-U_tmp.elem_p[j];
-        //}
 
         /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
         matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
         t += dt;
 
-        //(*func_p)(x1, t, u_exact);
-        //fem1d_ZILT(N, IMi, U_tmp, u_computed);
+        (*func_p)(params, x, t, u_exact);
+        fem1d_ZFLT(N, FM, u_exact, V_tmp);
 
         /* Error analysis */ 
-        //norm_actual = matlib_znrm2(u_exact);
-        //matlib_zaxpy(-1.0, u_exact, u_computed);
-        //e_relative.elem_p[i-1] = matlib_znrm2(u_computed)/norm_actual;
+        norm_actual = fem1d_ZNorm2(p, N, V_tmp);
+        matlib_zaxpy(-1.0, U_tmp, V_tmp );
+        e_relative.elem_p[i] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
     }
+    assert(fabs(ta[1]-t)<TOL);
     data.phase_enum = PARDISO_FREE;
     matlib_pardiso(&data);
-    fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_FREE);
 
-    return(0);
+    (*func_p)(params, x, ta[1], u_exact);
+    fem1d_ZILT(N, IM, U_tmp, u_computed);
+
+    /* Write the final evolution data to a file */ 
+    matlib_xzvwrite_csv( "initial_state.dat", 1, &x, 1, &u0);
+
+    matlib_zv tmp_mat[2] = {u_exact, u_computed }; 
+    matlib_xzvwrite_csv( "final_state.dat", 1, &x, 2, tmp_mat);
     
+    matlib_xvwrite_csv("e_relative.dat", 1, &e_relative);
+    DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
+
+    matlib_real r = e_relative.elem_p[Nt-1];
+    debug_exit("Relative error: % 0.16g", r);
+    return(r);
+}
+
+void solution_Gaussian_linpot
+(
+    matlib_real* params,
+    matlib_xv    x,
+    matlib_real  t,
+    matlib_zv    u
+)
+/* 
+ * 
+ * beta   = g_0 *sin(mu*t)/mu 
+ * nu     = (2*g_0*cos(mu*t))/mu^2 - (2*g_0)/mu^2;
+ * ibeta2 = (1/mu^3)(mu*(g_0^2*t)/2 - (g_0^2*sin(2*mu*t))/4;
+ * Xi     = beta*x-ibeta2;
+ *
+ * */ 
+{
+    debug_enter("%s", "");
+    matlib_complex coeff = 1.0/(4.0*I*t+1);
+    matlib_real *xptr;
+    /* parameters 
+     * param[0] = g_0, 
+     * param[1] = mu
+     * */ 
+    matlib_real Xi, x1;
     
+    matlib_real theta     = params[1]*t;
+    matlib_real beta      = params[0]*sin(theta)/params[1];
+    matlib_real nu        = 2.0*params[0]*(cos(theta)-1.0)/(params[1]*params[1]);
+    matlib_real ibeta2    = params[0]*params[0]*
+                            (theta/2.0 - sin(2*theta)/4.0)/(params[1]*params[1]*params[1]);
+
+    for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
+    {
+        Xi = beta**xptr - ibeta2;
+        x1 = *xptr + nu;
+        *(u.elem_p) = csqrt(coeff)*cexp(-x1*x1*coeff+I*Xi);
+        u.elem_p++;
+    }
+    debug_exit("%s", "");
+}
+
+void linear_timedependent_zpotential
+( 
+    matlib_complex time_coeff[2], 
+    matlib_xv      x, 
+    matlib_real    t0, 
+    matlib_real    dt, 
+    matlib_zm      y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  time_coeff[0]+
+                           0.5*time_coeff[1]**(x.elem_p+i)*
+                           (cos(2*M_PI*(t0))+cos(2*M_PI*(t0+dt)));
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
 }
 
 void test_solve_Schroedinger_IVP_2a(void)
 {
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
-    matlib_index N = 800;
-    matlib_index Nt = 4;
+    matlib_index N = 400;
+    matlib_index Nt = 2000;
     matlib_real dt = 0.5e-3;
     matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real e_relative;
 
 
     e_relative = solve_Schroedinger_IVP2( p, nr_LGL, N, domain, dt, Nt,
-                                         solution_Gaussian,
+                                         solution_Gaussian_linpot,
                                          linear_timedependent_zpotential);
+    CU_ASSERT_TRUE(e_relative<3e-6);
+
+}
+/*============================================================================*/
+
+void solution_Gaussian_timepot
+(
+    matlib_real* params,
+    matlib_xv    x,
+    matlib_real  t,
+    matlib_zv    u
+)
+/* 
+ * 
+ * phi = g_0 *cos(mu*t)
+ * Phi = g_0*sin(mu*t)/mu
+ *
+ * */ 
+{
+    debug_enter("%s", "");
+    matlib_complex coeff = 1.0/(4.0*I*t+1);
+    matlib_real *xptr;
+    /* parameters 
+     * param[0] = g_0, 
+     * param[1] = mu
+     *
+     * */ 
+
+    matlib_real theta = params[1]*t;
+    matlib_real Phi   = params[0]*sin(theta)/params[1];
+
+    for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
+    {
+        *(u.elem_p) = csqrt(coeff)*cexp(-*xptr**xptr*coeff+I*Phi);
+        u.elem_p++;
+    }
+    debug_exit("%s", "");
+}
+
+void timedependent_zpotential
+( 
+    matlib_complex time_coeff[2], 
+    matlib_xv      x, 
+    matlib_real    t0, 
+    matlib_real    dt, 
+    matlib_zm      y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  time_coeff[0]
+                           +0.5*time_coeff[1]*(cos(2*M_PI*(t0))+cos(2*M_PI*(t0+dt)));
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
+}
+
+void test_solve_Schroedinger_IVP_2b(void)
+{
+    matlib_index p = 4;
+    matlib_index nr_LGL = 2*p+1;
+    matlib_index N = 400;
+    matlib_index Nt = 2000;
+    matlib_real dt = 0.5e-3;
+    matlib_real domain[2] = {-15.0, 15.0 };
+    matlib_real e_relative;
+
+
+    e_relative = solve_Schroedinger_IVP3( p, nr_LGL, N, domain, dt, Nt,
+                                          solution_Gaussian_timepot);
+    CU_ASSERT_TRUE(e_relative<3.0e-6);
+
+}
+
+
+void test_solve_Schroedinger_IVP_2c(void)
+{
+    matlib_index p = 4;
+    matlib_index nr_LGL = 2*p+1;
+    matlib_index N = 1000;
+    matlib_index Nt = 1000;
+    matlib_real dt = 0.5e-3;
+    matlib_real domain[2] = {-15.0, 15.0 };
+    matlib_real e_relative;
+
+
+    e_relative = solve_Schroedinger_IVP2( p, nr_LGL, N, domain, dt, Nt,
+                                         solution_Gaussian_timepot,
+                                         timedependent_zpotential);
     CU_ASSERT_TRUE(e_relative<1e-3);
 
 }
+void constant_zpotential2
+( 
+          matlib_complex time_coeff[2], 
+    matlib_real    t0, 
+    matlib_real    dt, 
+    const matlib_xv x, 
+          matlib_zm y
+)
+{
+    debug_enter("%s", "");
+    matlib_index i, j;
+    for(j=0; j<y.lenr; j++)
+    {
+        for (i=0; i<x.len; i++)
+        {
+            *(y.elem_p) =  time_coeff[0]+time_coeff[1];
+            y.elem_p++;
+        }
+        t0 += dt;
+    }
+    debug_exit("%s", "");
+}
+
 
 /*============================================================================+/
 | Example 3.:
@@ -599,38 +972,6 @@ void test_solve_Schroedinger_IVP_2a(void)
 | t=0: u(x,t) = u_0(x) -> Initial data
 | 
 /+============================================================================*/
-
-
-void solution_BrightSolitonNLS
-( 
-    matlib_real    *params,
-    matlib_xv x, 
-    matlib_real    t, 
-    matlib_zv u
-)
-/*                  e^(i*eta^2*t)   
- * u(x,t) = eta ---------------------
- *                  cosh[eta*(x)]
- *
- * */ 
-{
-
-    debug_enter("%s", "");
-    
-    matlib_real *xptr;
-    matlib_real eta = 1.0;
-    matlib_complex e = cexp(I*eta*eta*t);
-
-    for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
-    {
-        *(u.elem_p) = eta*e/cosh(eta*(*xptr));
-        u.elem_p++;
-    }
-    debug_exit("%s", "");
-}
-
-
-
 matlib_real solve_NLSEquation_IVP
 (
     matlib_index p,
@@ -680,11 +1021,13 @@ matlib_real solve_NLSEquation_IVP
 
     matlib_real ta[2] = {0, Nt*dt};
 
-    /* Provide the initial condition */
-    matlib_zv u0, phi;
-    matlib_create_zv( x.len, &u0, MATLIB_COL_VECT);
-    matlib_create_zv( x.len, &phi, MATLIB_COL_VECT);
+    matlib_zv u0, phi, u_exact, u_computed;
+    matlib_create_zv( x.len,         &u0, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,        &phi, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,    &u_exact, MATLIB_COL_VECT);
+    matlib_create_zv( x.len, &u_computed, MATLIB_COL_VECT);
     
+    /* Provide the initial condition: u0 */
     matlib_real params[2] = {1.0, 2*M_PI};
     (*func_p)(params, x, ta[0], u0);
     //DEBUG_PRINT_ZV(u0, "%s :", "Initial condition");
@@ -703,25 +1046,11 @@ matlib_real solve_NLSEquation_IVP
     for(i=0; i<phi.len; i++)
     {
         phi.elem_p[i] = 1.0;
-    
     }
     fem1d_zm_sparse_GMM(p, Q, phi, &M);
-    
-    /* Setup the sparse linear system */
 
-    M.elem_p[0] =  coeff/2.0 + M.elem_p[0];
-    M.elem_p[1] = -coeff/2.0 + M.elem_p[1];
-    for(i=1; i<N; i++)
-    {
-        M.elem_p[M.rowIn[i]]   =  coeff     + M.elem_p[M.rowIn[i]  ];
-        M.elem_p[M.rowIn[i]+1] = -coeff/2.0 + M.elem_p[M.rowIn[i]+1];
-    }
-    M.elem_p[M.rowIn[i]] = coeff/2.0 + M.elem_p[M.rowIn[i]];
-    
-    for(i=N+1; i<M.lenc; i++)
-    {
-        M.elem_p[M.rowIn[i]] = coeff + M.elem_p[M.rowIn[i]];
-    }
+    /* Global Stiffness-Mass Matrix */ 
+    fem1d_zm_sparse_GSM(N, coeff, M);
 
     BEGIN_DTRACE
         debug_print("dimension of the sparse square matrix: %d", M.lenc);
@@ -735,8 +1064,6 @@ matlib_real solve_NLSEquation_IVP
     END_DTRACE
     
     /* Setup the sparse linear system */
-
-
     /* Solve the equation while marching in time 
      *
      * Linear system M * V_vb = Pvb 
@@ -758,16 +1085,6 @@ matlib_real solve_NLSEquation_IVP
         V_tmp.elem_p[i] = 0;
     }
 
-    /* ONLY FOR ERROR: Compute the exact solution and make a forward LT */ 
-    matlib_xv xii, quadWi, x1;
-    legendre_LGLdataLT1( p, TOL, &xii, &quadWi);
-    fem1d_ref2mesh (xii, N, x_l, x_r, &x1);
-    matlib_xm IMi;
-    matlib_create_xm( xii.len, p+1, &IMi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-    legendre_LGLdataIM( xii, IMi);
-    matlib_zv u_exact, u_computed;
-    matlib_create_zv( x1.len,    &u_exact, MATLIB_COL_VECT);
-    matlib_create_zv( x1.len, &u_computed, MATLIB_COL_VECT);
 
     matlib_real t = 0, norm_actual;
     matlib_xv e_relative;
@@ -847,13 +1164,13 @@ matlib_real solve_NLSEquation_IVP
         matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
         t += dt;
 
-        (*func_p)(params, x1, t, u_exact);
-        fem1d_ZILT(N, IMi, U_tmp, u_computed);
+        (*func_p)(params, x, t, u_exact);
+        fem1d_ZFLT(N, FM, u_exact, V_tmp);
 
         /* Error analysis */ 
-        norm_actual = matlib_znrm2(u_exact);
-        matlib_zaxpy(-1.0, u_exact, u_computed);
-        e_relative.elem_p[i] = matlib_znrm2(u_computed)/norm_actual;
+        norm_actual = fem1d_ZNorm2(p, N, V_tmp);
+        matlib_zaxpy(-1.0, U_tmp, V_tmp );
+        e_relative.elem_p[i] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
         debug_body("relative error: %0.16f", e_relative.elem_p[i]);
     }
 
@@ -865,14 +1182,14 @@ matlib_real solve_NLSEquation_IVP
     matlib_pardiso(&data);
 
 
-    (*func_p)(params, x1, t, u_exact);
-    fem1d_ZILT(N, IMi, U_tmp, u_computed);
+    (*func_p)(params, x, t, u_exact);
+    fem1d_ZILT(N, IM, U_tmp, u_computed);
 
     matlib_xzvwrite_csv("u_initial.dat", 1, &x, 1, &u0);
     matlib_xvwrite_csv("e_relative.dat", 1, &e_relative);
 
-    matlib_zv tmp_mat[2] ={u_exact, u_computed }; 
-    matlib_xzvwrite_csv("final_state.dat", 1, &x1, 2, tmp_mat);
+    matlib_zv tmp_mat[2] = {u_exact, u_computed }; 
+    matlib_xzvwrite_csv("final_state.dat", 1, &x, 2, tmp_mat);
 
     DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
 
@@ -882,20 +1199,50 @@ matlib_real solve_NLSEquation_IVP
     
 }
 
+void solution_BrightSolitonNLS
+( 
+    matlib_real    *params,
+    matlib_xv x, 
+    matlib_real    t, 
+    matlib_zv u
+)
+/*                  e^(i*eta^2*t)   
+ * u(x,t) = eta ---------------------
+ *                  cosh[eta*(x)]
+ *
+ * */ 
+{
+
+    debug_enter("%s", "");
+    
+    matlib_real *xptr;
+    matlib_real eta = 1.0;
+    matlib_complex e = cexp(I*eta*eta*t);
+
+    for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
+    {
+        *(u.elem_p) = eta*e/cosh(eta*(*xptr));
+        u.elem_p++;
+    }
+    debug_exit("%s", "");
+}
+
+
+
 void test_solve_NLSEquation_IVP(void)
 {
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
-    matlib_index N = 2000;
+    matlib_index N = 1000;
     matlib_index Nt = 4000;
     matlib_real dt = 0.5e-3;
-    matlib_real domain[2] = {-10.0, 10.0 };
+    matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real e_relative;
     
     e_relative = solve_NLSEquation_IVP( p, nr_LGL, N, domain, dt, Nt,
                                        solution_BrightSolitonNLS);
 
-    CU_ASSERT_TRUE(true);
+    CU_ASSERT_TRUE(e_relative<1e-6);
 
 }
 
@@ -910,10 +1257,10 @@ void test_solve_NLSEquation_IVP(void)
 /+============================================================================*/
 void solution_BrightSolitonGPE
 ( 
-    matlib_real    *params,
-    matlib_xv x, 
-    matlib_real    t, 
-    matlib_zv u
+    matlib_real* params,
+    matlib_xv    x, 
+    matlib_real  t, 
+    matlib_zv    u
 )
 /*                  e^(i*eta^2*t)   
  * u(x,t) = eta ---------------------e^(i*Xi)
@@ -921,7 +1268,7 @@ void solution_BrightSolitonGPE
  *
  * beta   = g_0 *sin(mu*t)/mu 
  * nu     = (2*g_0*cos(mu*t))/mu^2 - (2*g_0)/mu^2;
- * ibeta2 = (mu*(g_0^2*t)/2 - (g_0^2*sin(2*mu*t))/4;
+ * ibeta2 = (1/mu^3)(mu*(g_0^2*t)/2 - (g_0^2*sin(2*mu*t))/4;
  * Xi     = beta*x-ibeta2;
  *
  * */ 
@@ -940,12 +1287,13 @@ void solution_BrightSolitonGPE
     matlib_real theta     = params[1]*t;
     matlib_real beta      = params[0]*sin(theta)/params[1];
     matlib_real nu        = 2.0*params[0]*(cos(theta)-1.0)/(params[1]*params[1]);
-    matlib_real ibeta2    = params[0]*params[0]*(theta/2.0 - sin(2*theta)/4.0);
+    matlib_real ibeta2    = params[0]*params[0]*
+                            (theta/2.0 - sin(2*theta)/4.0)/(params[1]*params[1]*params[1]);
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
         Xi = beta**xptr - ibeta2;
-        *(u.elem_p) = eta*e*exp(I*Xi)/cosh(eta*(*xptr+nu));
+        *(u.elem_p) = eta*e*cexp(I*Xi)/cosh(eta*(*xptr+nu));
         u.elem_p++;
     }
     debug_exit("%s", "");
@@ -996,8 +1344,10 @@ matlib_real solve_GPEquation_IVP
     matlib_real ta[2] = {0, Nt*dt};
 
     /* Provide the initial condition */
-    matlib_zv u0;
-    matlib_create_zv( x.len, &u0, MATLIB_COL_VECT);
+    matlib_zv u0, u_exact, u_computed;
+    matlib_create_zv( x.len,         &u0, MATLIB_COL_VECT);
+    matlib_create_zv( x.len,    &u_exact, MATLIB_COL_VECT);
+    matlib_create_zv( x.len, &u_computed, MATLIB_COL_VECT);
     
     matlib_real params[2] = {1.0, 2*M_PI};
     (*func_p)(params, x, ta[0], u0);
@@ -1006,7 +1356,7 @@ matlib_real solve_GPEquation_IVP
     /* Assemble the global mass matrix */ 
 
     matlib_real irho = dt/2.0;
-    matlib_real J   = 0.5*(x_r-x_l)/N;
+    matlib_real J    = 0.5*(x_r-x_l)/N;
     matlib_complex coeff = 0.0 + I*irho/(J*J);
     matlib_complex time_coeff[2] = {1.0, -I*irho};
     debug_body("coeff: %0.16f%+0.16fi", coeff);
@@ -1041,29 +1391,19 @@ matlib_real solve_GPEquation_IVP
         V_tmp.elem_p[i] = 0;
     }
 
-    /* ONLY FOR ERROR: Compute the exact solution and make a forward LT */ 
-    matlib_xv xii, quadWi, x1;
-    legendre_LGLdataLT1( p, TOL, &xii, &quadWi);
-    fem1d_ref2mesh (xii, N, x_l, x_r, &x1);
-    matlib_xm IMi;
-    matlib_create_xm( xii.len, p+1, &IMi, MATLIB_COL_MAJOR, MATLIB_NO_TRANS);    
-    legendre_LGLdataIM( xii, IMi);
-    matlib_zv u_exact, u_computed;
-    matlib_create_zv( x1.len,    &u_exact, MATLIB_COL_VECT);
-    matlib_create_zv( x1.len, &u_computed, MATLIB_COL_VECT);
 
     matlib_real t = 0, norm_actual;
     matlib_xv e_relative;
     matlib_create_xv( Nt, &e_relative, MATLIB_COL_VECT);
 
-    pardiso_solver_t data = { .nsparse = nsparse, 
-                                 .mnum    = 1, 
-                                 .mtype   = PARDISO_COMPLEX_SYM,
+    pardiso_solver_t data = { .nsparse     = nsparse, 
+                                 .mnum     = 1, 
+                                 .mtype    = PARDISO_COMPLEX_SYM,
                                  .sol_enum = PARDISO_LHS, 
-                                 .smat_p  = (void*)&M,
-                                 .rhs_p   = (void*)&PNL_vb,
-                                 .sol_p   = (void*)&V_vb};
-    debug_body("%s", "SolverDATA initialized");
+                                 .smat_p   = (void*)&M,
+                                 .rhs_p    = (void*)&PNL_vb,
+                                 .sol_p    = (void*)&V_vb};
+    debug_body("%s", "Solver data initialized");
 
     data.phase_enum = PARDISO_INIT;
     matlib_pardiso(&data);
@@ -1128,13 +1468,13 @@ matlib_real solve_GPEquation_IVP
             matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
             t += dt;
 
-            (*func_p)(params, x1, t, u_exact);
-            fem1d_ZILT(N, IMi, U_tmp, u_computed);
+            (*func_p)(params, x, t, u_exact);
+            fem1d_ZFLT(N, FM, u_exact, V_tmp);
 
             /* Error analysis */ 
-            norm_actual = matlib_znrm2(u_exact);
-            matlib_zaxpy(-1.0, u_exact, u_computed);
-            e_relative.elem_p[k*nsparse+i] = matlib_znrm2(u_computed)/norm_actual;
+            norm_actual = fem1d_ZNorm2(p, N, V_tmp);
+            matlib_zaxpy(-1.0, U_tmp, V_tmp );
+            e_relative.elem_p[k*nsparse+i] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
             debug_body("relative error: %0.16f", e_relative.elem_p[k*nsparse+i]);
         }
     }
@@ -1143,10 +1483,14 @@ matlib_real solve_GPEquation_IVP
     matlib_pardiso(&data);
     fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GMM_FREE);
 
-    (*func_p)(params, x1, ta[2], u_exact);
-    fem1d_ZILT(N, IMi, U_tmp, u_computed);
+    (*func_p)(params, x, ta[2], u_exact);
+    fem1d_ZILT(N, IM, U_tmp, u_computed);
 
-    DEBUG_PRINT_XV(e_relative, "%s :", "relative error");
+    matlib_xzvwrite_csv("u_initial.dat", 1, &x, 1, &u0);
+    matlib_xvwrite_csv("e_relative.dat", 1, &e_relative);
+
+    matlib_zv tmp_mat[2] = {u_exact, u_computed }; 
+    matlib_xzvwrite_csv("final_state.dat", 1, &x, 2, tmp_mat);
 
     matlib_real r = e_relative.elem_p[Nt-1];
     debug_exit("Relative error: % 0.16g", r);
@@ -1159,7 +1503,7 @@ void test_solve_GPEquation_IVP(void)
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
     matlib_index N = 1000;
-    matlib_index Nt = 2000;
+    matlib_index Nt = 200;
     matlib_real dt = 0.5e-3;
     matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real e_relative;
@@ -1168,7 +1512,7 @@ void test_solve_GPEquation_IVP(void)
                                        solution_BrightSolitonGPE,
                                        linear_timedependent_zpotential);
 
-    CU_ASSERT_TRUE(true);
+    CU_ASSERT_TRUE(e_relative<1e-3);
 
 }
 
@@ -1197,8 +1541,10 @@ int main(void)
     {
         //{ "Schroedinger Equation, const. potential"  , test_solve_Schroedinger_IVP_1a},
         //{ "Schroedinger Equation, harmonic potential", test_solve_Schroedinger_IVP_1b},
-        //{ "Schroedinger Equation, linear time-dependent potential", test_solve_Schroedinger_IVP_2a},
-        { "NLS Equation", test_solve_NLSEquation_IVP},
+        { "Schroedinger Equation, linear time-dependent potential", test_solve_Schroedinger_IVP_2a},
+        //{ "Schroedinger Equation, time-dependent potential", test_solve_Schroedinger_IVP_2b},
+        //{ "Schroedinger Equation, time-dependent potential2", test_solve_Schroedinger_IVP_2c},
+        //{ "NLS Equation", test_solve_NLSEquation_IVP},
         //{ "GP Equation, linear time-dependent potential", test_solve_GPEquation_IVP},
         CU_TEST_INFO_NULL,
     };

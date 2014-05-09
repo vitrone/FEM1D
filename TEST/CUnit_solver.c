@@ -1,5 +1,5 @@
 /*============================================================================+/
- | File: Cunit_solver.c 
+ | File: CUnit_solver.c 
  | Description: Test 
  |
  |

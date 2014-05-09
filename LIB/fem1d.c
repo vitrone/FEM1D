@@ -5207,7 +5207,8 @@ void fem1d_ZCSRGMM2
 
     /* number of nonzero elements nnz = N*p*(p+3)/2+1;
      * */
-    matlib_index s, i, l, l0, m, st;
+    matlib_index s, i, l, l0, m, st, shiftq;
+    matlib_index shiftq0 = 3+2*(p-1);
 
     /* zero-th row 
      *
@@ -5226,7 +5227,7 @@ void fem1d_ZCSRGMM2
         (*ugpmm)[s] = *(q.elem_p+1);
         s++;
 
-        matlib_index shiftq = 3;
+        shiftq = 3;
         
         for (l=N+1; l<(N+p); l++)
         {
@@ -5286,7 +5287,7 @@ void fem1d_ZCSRGMM2
         /* vertex-vertex and vertex-bubble combinations are done
          * do the bubble-bubble combination
          * */ 
-        matlib_index shiftq0 = 3+2*(p-1);
+        shiftq0 = 3+2*(p-1);
 
         for( st=0; st<N*nr_combi; st +=nr_combi)
         {
@@ -5421,12 +5422,12 @@ void fem1d_xm_nsparse_GMM
         matlib_index dim = N*p+1;
         matlib_index nnz = N*(Q.lenc-1)+1;
         debug_body( "nr. of non-zero elements of M: %d", nnz);
-        M->lenc   = dim;
-        M->lenr   = dim;
+        M->lenc    = dim;
+        M->lenr    = dim;
         M->nsparse = nsparse;
-        M->rowIn  = calloc( dim+1, sizeof(matlib_index));
-        M->colIn  = calloc(   nnz, sizeof(matlib_index));
-        M->elem_p = (matlib_real**)calloc( nsparse, sizeof(matlib_real *));
+        M->rowIn   = calloc( dim+1, sizeof(matlib_index));
+        M->colIn   = calloc(   nnz, sizeof(matlib_index));
+        M->elem_p  = (matlib_real**)calloc( nsparse, sizeof(matlib_real *));
 
         for(matlib_index i = 0; i<nsparse; i++)
         {
