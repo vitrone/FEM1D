@@ -48,7 +48,8 @@ SOURCES = CUnit_matrix.c   \
           CUnit_matlib_solver.c   \
           CUnit_solver.c   \
           speedup_pfem1d.c \
-          CUnit_fem1d_Schroedinger.c   \
+          CUnit_fem1d_LinearSchroedinger.c   \
+          CUnit_fem1d_NonlinearSchroedinger.c   \
           CUnit_pthpool_func.c         \
           CUnit_pfem1d.c       
 
