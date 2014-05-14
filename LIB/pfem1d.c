@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include "mkl.h"
 
-//#define NDEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 #include "assert.h"
 #include "pfem1d.h"
@@ -276,7 +276,7 @@ void pfem1d_XFLT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_XFLT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = N;
@@ -286,7 +286,7 @@ void pfem1d_XFLT
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_XFLT;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 
@@ -430,7 +430,7 @@ void pfem1d_ZFLT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_ZFLT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = N;
@@ -440,7 +440,7 @@ void pfem1d_ZFLT
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_ZFLT;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 
@@ -634,7 +634,7 @@ void pfem1d_XILT
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_XILT;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
     for(i=1; i<num_threads-1; i++)
     {
         nsdata[i][0] = i*Np;
@@ -647,7 +647,7 @@ void pfem1d_XILT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_XILT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     if(i<num_threads)
     {
@@ -661,7 +661,7 @@ void pfem1d_XILT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_XILT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     debug_body("%s", "created task");
 
@@ -898,7 +898,7 @@ void pfem1d_ZILT
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_ZILT;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
     for(i=1; i<num_threads-1; i++)
     {
         nsdata[i][0] = i*Np;
@@ -911,7 +911,7 @@ void pfem1d_ZILT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_ZILT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     if(i<num_threads)
     {
@@ -925,7 +925,7 @@ void pfem1d_ZILT
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_ZILT;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     debug_body("%s", "created task");
 
@@ -1091,7 +1091,7 @@ void pfem1d_XFLT2
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_XFLT2;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = u.lenr;
@@ -1101,7 +1101,7 @@ void pfem1d_XFLT2
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_XFLT2;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 
@@ -1266,7 +1266,7 @@ void pfem1d_ZFLT2
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_ZFLT2;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = u.lenr;
@@ -1276,7 +1276,7 @@ void pfem1d_ZFLT2
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_ZFLT2;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 
@@ -1430,7 +1430,7 @@ void pfem1d_XF2L
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_dshapefunc2lp;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -1440,7 +1440,7 @@ void pfem1d_XF2L
             /* Define the task */ 
             task[i].function  = (void*)thfunc_dshapefunc2lp;
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
 
@@ -1467,7 +1467,7 @@ void pfem1d_XF2L
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -1477,7 +1477,7 @@ void pfem1d_XF2L
             /* Define the task */ 
             task[i].function  = (void*)fp[func_index];
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -1636,7 +1636,7 @@ void pfem1d_ZF2L
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_zshapefunc2lp;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -1646,7 +1646,7 @@ void pfem1d_ZF2L
             /* Define the task */ 
             task[i].function  = (void*)thfunc_zshapefunc2lp;
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -1675,7 +1675,7 @@ void pfem1d_ZF2L
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -1685,7 +1685,7 @@ void pfem1d_ZF2L
             /* Define the task */ 
             task[i].function  = (void*)fp[func_index];
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -2515,7 +2515,7 @@ void pfem1d_XPrjL2F
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_dprjLP2FEM_ShapeFunc;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -2525,7 +2525,7 @@ void pfem1d_XPrjL2F
             /* Define the task */ 
             task[i].function  = (void*)thfunc_dprjLP2FEM_ShapeFunc;
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -2554,7 +2554,7 @@ void pfem1d_XPrjL2F
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -2564,7 +2564,7 @@ void pfem1d_XPrjL2F
             /* Define the task */ 
             task[i].function  = (void*)fp[func_index];
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -2720,7 +2720,7 @@ void pfem1d_ZPrjL2F
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_zprjLP2FEM_ShapeFunc;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -2730,7 +2730,7 @@ void pfem1d_ZPrjL2F
             /* Define the task */ 
             task[i].function  = (void*)thfunc_zprjLP2FEM_ShapeFunc;
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -2759,7 +2759,7 @@ void pfem1d_ZPrjL2F
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -2769,7 +2769,7 @@ void pfem1d_ZPrjL2F
             /* Define the task */ 
             task[i].function  = (void*)fp[func_index];
             task[i].argument  = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
             pthpool_exec_task(num_threads, mp, task);
@@ -3677,7 +3677,7 @@ matlib_real pfem1d_XNorm2
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_dlp_snorm2_d;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -3689,7 +3689,7 @@ matlib_real pfem1d_XNorm2
             /* Define the task */ 
             task[i].function = (void*)thfunc_dlp_snorm2_d;
             task[i].argument = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
 
@@ -3716,7 +3716,7 @@ matlib_real pfem1d_XNorm2
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -3728,7 +3728,7 @@ matlib_real pfem1d_XNorm2
             /* Define the task */ 
             task[i].function = (void*)fp[func_index];
             task[i].argument = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
 
@@ -3858,7 +3858,7 @@ matlib_real pfem1d_ZNorm2
                 /* Define the task */ 
                 task[i].function  = (void*)thfunc_zlp_snorm2_d;
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -3870,7 +3870,7 @@ matlib_real pfem1d_ZNorm2
             /* Define the task */ 
             task[i].function = (void*)thfunc_zlp_snorm2_d;
             task[i].argument = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
 
@@ -3898,7 +3898,7 @@ matlib_real pfem1d_ZNorm2
                 /* Define the task */ 
                 task[i].function  = (void*)fp[func_index];
                 task[i].argument  = &arg[i];
-                mp[i].task = &task[i];
+                
             }
             nsdata[i][0] = i*Np;
             nsdata[i][1] = N;
@@ -3910,7 +3910,7 @@ matlib_real pfem1d_ZNorm2
             /* Define the task */ 
             task[i].function = (void*)fp[func_index];
             task[i].argument = &arg[i];
-            mp[i].task = &task[i];
+            
 
             debug_body("%s", "created task");
 
@@ -4703,7 +4703,7 @@ void pfem1d_xm_nsparse_GMM
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_XCSRGMM2;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = M->nsparse;
@@ -4713,7 +4713,7 @@ void pfem1d_xm_nsparse_GMM
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_XCSRGMM2;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 
@@ -4910,7 +4910,7 @@ void pfem1d_zm_nsparse_GMM
         /* Define the task */ 
         task[i].function  = (void*)pfem1d_thfunc_ZCSRGMM2;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
+        
     }
     nsdata[i][0] = i*Np;
     nsdata[i][1] = M->nsparse;
@@ -4920,7 +4920,7 @@ void pfem1d_zm_nsparse_GMM
     /* Define the task */ 
     task[i].function  = (void*)pfem1d_thfunc_ZCSRGMM2;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
+    
 
     debug_body("%s", "created task");
 

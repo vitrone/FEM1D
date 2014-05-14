@@ -466,6 +466,18 @@ matlib_real solve_Schroedinger_IVP2
 {
 
     debug_enter( "polynomial degree: %d, nr. of LGL points: %d", p, nr_LGL );
+
+    struct timespec tb, te;
+    matlib_real dn, tdn;
+
+    struct timespec tb1, te1;
+    matlib_real dn1, tdn1;
+    
+    struct timespec tb2, te2;
+    matlib_real dn2, tdn2;
+
+    START_TIMMING(tb);
+
     matlib_index i, j;
     matlib_index P = nr_LGL-1;
 
@@ -569,15 +581,26 @@ matlib_real solve_Schroedinger_IVP2
     matlib_index Nt_ = Nt/nsparse;
     matlib_xv t_tmp  = {.len = nsparse}; 
 
+    GET_DURATION(tb, te, dn);
+    debug_print("Initialization time[msec]: %0.4f", dn);
+
+    tdn  = 0;
+    tdn1 = 0;
+    tdn2 = 0;
     for (i=0; i<Nt_; i++)
     {
+        START_TIMMING(tb1);
         t_tmp.elem_p = t.elem_p + i*nsparse;
         (*pot_p)( params, m_coeff, x, t_tmp, phi);
         fem1d_zm_nsparse_GMM(p, N, nsparse, Q, &phi, &q, &M, FEM1D_GET_NZE_ONLY);
         fem1d_zm_nsparse_GSM(N, s_coeff, M);
 
+        GET_DURATION(tb1, te1, dn1);
+        tdn1 += dn1;
+
         for(j=0; j<nsparse; j++)
         {
+            START_TIMMING(tb);
             debug_body("begin iteration: %d", i*nsparse+j);
             fem1d_ZPrjL2F(p, U_tmp, Pvb);
 
@@ -593,6 +616,10 @@ matlib_real solve_Schroedinger_IVP2
             /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
             matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
 
+            GET_DURATION(tb, te, dn);
+            tdn += dn;
+
+            START_TIMMING(tb2);
             (*fun_p)(params, x, t_tmp.elem_p[j+1], u_exact);
             fem1d_ZFLT(N, FM, u_exact, V_tmp);
 
@@ -600,8 +627,13 @@ matlib_real solve_Schroedinger_IVP2
             norm_actual = fem1d_ZNorm2(p, N, V_tmp);
             matlib_zaxpy(-1.0, U_tmp, V_tmp );
             e_relative.elem_p[j+i*nsparse] = fem1d_ZNorm2(p, N, V_tmp)/norm_actual;
+            GET_DURATION(tb2, te2, dn2);
+            tdn2 += dn2;
         }
     }
+    debug_print("Time spent in building GSMM [msec]: %0.4f", tdn1);
+    debug_print("Time spent in solving-marix eq [msec]: %0.4f", tdn);
+    debug_print("Time spent in computing error [msec]: %0.4f", tdn2);
 
     (*fun_p)(params, x, t.elem_p[t.len-1], u_exact);
     fem1d_ZILT(N, IM, U_tmp, u_computed);
@@ -713,9 +745,9 @@ void test_solve_Schroedinger_IVP2a(void)
 {
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
-    matlib_index N  = 400;
-    matlib_index Nt = 2000;
-    matlib_real dt = 0.5e-3;
+    matlib_index N  = 8000;
+    matlib_index Nt = 10000;
+    matlib_real dt = 1.0e-3/10;
     matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real params[2] = {1.0, 2*M_PI};
     matlib_real e_relative;
@@ -800,8 +832,8 @@ void test_solve_Schroedinger_IVP2b(void)
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
     matlib_index N = 400;
-    matlib_index Nt = 1000;
-    matlib_real dt = 0.5e-3;
+    matlib_index Nt = 4000;
+    matlib_real dt = 1.0e-3/4.0;
     matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real params[2] = {1.0, 2*M_PI};
     matlib_real e_relative;
@@ -1082,6 +1114,7 @@ void test_solve_Schroedinger_IVP3a(void)
 
 int main(void)
 {
+    mkl_domain_set_num_threads(4, MKL_BLAS);
     CU_pSuite pSuite = NULL;
 
     /* initialize the CUnit test registry */
@@ -1093,11 +1126,11 @@ int main(void)
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Constant potential"              , test_solve_Schroedinger_IVP1a},
-        { "Harmonic potential"              , test_solve_Schroedinger_IVP1b},
+        //{ "Constant potential"              , test_solve_Schroedinger_IVP1a},
+        //{ "Harmonic potential"              , test_solve_Schroedinger_IVP1b},
         { "Linear time-dependent potential" , test_solve_Schroedinger_IVP2a},
-        { "Time-dependent potential"        , test_solve_Schroedinger_IVP2b},
-        { "Linear time-dependent potential2", test_solve_Schroedinger_IVP3a},
+        //{ "Time-dependent potential"        , test_solve_Schroedinger_IVP2b},
+        //{ "Linear time-dependent potential2", test_solve_Schroedinger_IVP3a},
         CU_TEST_INFO_NULL,
     };
 

@@ -64,6 +64,8 @@ void* thfunc_Gaussian(void* mp)
     debug_enter("%s", "");
     matlib_index i;
     pthpool_arg_t *ptr = (pthpool_arg_t*) mp;
+    debug_body("%s", "argument initialized");
+
     matlib_xv x = *((matlib_xv*) (ptr->shared_data[0]));
     matlib_zv u = *((matlib_zv*) (ptr->shared_data[1]));
 
@@ -96,16 +98,15 @@ void test_pfunc(void)
     pthpool_data_t mp[num_threads];
     
     pthpool_create_threads(num_threads, mp);
-
     /* define the domain */ 
     matlib_real x_l = -5.0;
     matlib_real x_r =  5.0;
 
-    matlib_index p = 4;
+    matlib_index p = 1;
     matlib_xv xi, quadW;
     legendre_LGLdataLT1( p, TOL, &xi, &quadW);
 
-    matlib_index N = 2000;
+    matlib_index N = 10000;
     matlib_xv x;
     fem1d_ref2mesh (xi, N, x_l, x_r, &x);
     debug_body("length of x: %d", x.len);
@@ -129,6 +130,7 @@ void test_pfunc(void)
                              (void*) param};
     START_TIMMING(tb);
     pthpool_func( Np, shared_data, thfunc_Gaussian, num_threads, mp);
+    
     GET_DURATION(tb, te, dn);
     debug_print("parallel time[msec]: %0.4f", dn);
 

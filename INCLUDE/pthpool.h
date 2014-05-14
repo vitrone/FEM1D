@@ -11,7 +11,7 @@
 /*============================================================================+/
  |DATA STRUCTURES AND ENUMS
 /+============================================================================*/
-#define MAX_NUM_CPU 4
+#define MAX_NUM_CPU 8
 
 typedef enum
 {
@@ -65,6 +65,19 @@ void pthpool_exec_task
     matlib_index    num_threads, 
     pthpool_data_t* mp, 
     pthpool_task_t* task
+);
+
+void pthpool_exec_task_nosync
+( 
+    matlib_index    num_threads, 
+    pthpool_data_t* mp, 
+    pthpool_task_t* task
+);
+
+void pthpool_sync_threads
+( 
+    matlib_index    num_threads, 
+    pthpool_data_t* mp 
 );
 
 void pthpool_destroy_threads

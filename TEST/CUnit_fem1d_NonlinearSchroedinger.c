@@ -403,13 +403,13 @@ void solution_BrightSolitonNLS2
     debug_enter("%s", "");
     
     matlib_real *xptr;
-    matlib_real eta = 1.0;
+    matlib_real eta = 0.5;
     matlib_complex e = cexp(I*eta*eta*t);
 
     for (xptr = x.elem_p; xptr<(x.elem_p+x.len); xptr++)
     {
         *(u.elem_p) = 4.0*eta*(cosh(3.0*eta**xptr)+3.0*cpow(e,8.0)*cosh(eta**xptr))*e
-                      /(cosh(4.0*eta**xptr)+4.0*cosh(2.0**xptr)+3.0*cos(8.0*t));
+                      /(cosh(4.0*eta**xptr)+4.0*cosh(2.0*eta**xptr)+3.0*cos(8.0*eta*eta*t));
         u.elem_p++;
     }
     debug_exit("%s", "");
@@ -421,8 +421,8 @@ void test_solve_NLSEquation_IVPb(void)
     matlib_index nr_LGL = 2*p+1;
     matlib_index N = 1000;
     matlib_index Nt = 4000;
-    matlib_real dt = 1.0e-4;
-    matlib_real domain[2] = {-15.0, 15.0 };
+    matlib_real dt = 2.5e-4;
+    matlib_real domain[2] = {-25.0, 25.0 };
     matlib_real e_relative, Chi = 2.0;
     
     struct timespec tb, te;

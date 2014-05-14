@@ -2,7 +2,6 @@
  | pthpool.c
  | Defines library functions for creating thread pool. 
 /+============================================================================*/
-
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
@@ -56,6 +55,7 @@ static void* pthpool_schedule_task(void *mp)
         task.function(task.argument);
 
         /* Check if any threads are waiting for finishing the task */ 
+        debug_body("task completed with thread: %d", pth->thread_index);
         pthread_mutex_lock(&(pth->lock));
         if((pth->action) == PTHPOOL_NOTIFY)
         {
@@ -97,7 +97,7 @@ void pthpool_create_threads
 
     for(i=0; i<num_threads; i++)
     {
-        mp[i].thread_index  = i;
+        mp[i].thread_index = i;
         /* set the CPU affinity */ 
         CPU_ZERO(&mp[i].cpu);
         CPU_SET( i%MAX_NUM_CPU, &mp[i].cpu);
@@ -112,6 +112,7 @@ void pthpool_create_threads
                                     pthpool_schedule_task, 
                                     (void *) &mp[i]); 
 
+        //pthread_setaffinity_np(mp[i].thread, sizeof(cpu_set_t), &mp[i].cpu);
         if(pthread_r)
         {
             term_exec("failed to create the pthread (return value: %d)", pthread_r);
@@ -142,6 +143,7 @@ void pthpool_exec_task
     matlib_index i;
     for(i=0; i<num_threads; i++)
     {
+        debug_enter("pthpool_data_t*: %p", &mp[i]);
         pthread_mutex_lock(&(mp[i].lock));
         debug_body("thread id: %d", i);
 
@@ -153,13 +155,67 @@ void pthpool_exec_task
         pthread_mutex_unlock(&(mp[i].lock));
         
     }
+    //sleep(1);
     for(i=0; i<num_threads; i++)
     {
+        pthread_mutex_lock(&(mp[i].lock));
+        if((mp[i].action) == PTHPOOL_PERFORM)
+        {
+            debug_body("thread id: %d", i);
+            (mp[i].action) = PTHPOOL_NOTIFY;
+            debug_body("thread index: %d, action : NOTIFY", mp[i].thread_index);
+            debug_body("Going to wait for thread: %d", mp[i].thread_index);
+            pthread_cond_wait(&(mp[i].notify), &(mp[i].lock));
+            debug_body("completed thread: %d", mp[i].thread_index);
+        }
+        debug_body("Thread id: %d, unlocking", i); 
+        pthread_mutex_unlock(&(mp[i].lock));
         
+    }
+    debug_exit("%s", "");
+}
+/*============================================================================*/
+
+void pthpool_exec_task_nosync
+( 
+    matlib_index    num_threads, 
+    pthpool_data_t* mp, 
+    pthpool_task_t* task
+)
+{
+    debug_enter("Number of threads: %d", num_threads);
+    matlib_index i;
+    for(i=0; i<num_threads; i++)
+    {
+        debug_enter("pthpool_data_t*: %p", &mp[i]);
         pthread_mutex_lock(&(mp[i].lock));
         debug_body("thread id: %d", i);
 
-        if(((mp[i].action) == PTHPOOL_PERFORM))
+        mp[i].task = &task[i];
+        (mp[i].action) = PTHPOOL_PERFORM;
+        debug_body("thread index: %d, action : PERFORM", mp[i].thread_index);
+
+        pthread_cond_signal(&(mp[i].notify));
+        pthread_mutex_unlock(&(mp[i].lock));
+        
+    }
+    debug_exit("%s", "");
+}
+
+void pthpool_sync_threads
+( 
+    matlib_index    num_threads, 
+    pthpool_data_t* mp 
+)
+{
+    debug_enter("Number of threads: %d", num_threads);
+    matlib_index i;
+    for(i=0; i<num_threads; i++)
+    {
+        pthread_mutex_lock(&(mp[i].lock));
+        debug_body("thread id: %d", i);
+
+        if((mp[i].action) == PTHPOOL_PERFORM)
         {
             (mp[i].action) = PTHPOOL_NOTIFY;
             debug_body("thread index: %d, action : NOTIFY", mp[i].thread_index);
@@ -168,10 +224,10 @@ void pthpool_exec_task
         }
         debug_body("completed thread: %d", mp[i].thread_index);
         pthread_mutex_unlock(&(mp[i].lock));
-        
     }
     debug_exit("%s", "");
 }
+
 /*============================================================================*/
 
 void pthpool_destroy_threads
@@ -228,7 +284,7 @@ void pthpool_func
 
 )
 {
-    debug_enter("%s", "");
+    debug_enter("Np: [%d, %d]", Np[0], Np[1]);
 
     matlib_index i; 
     /* define the shared data */ 
@@ -249,7 +305,6 @@ void pthpool_func
         /* Define the task */ 
         task[i].function  = (void*)thfunc;
         task[i].argument  = &arg[i];
-        mp[i].task = &task[i];
     }
     nsdata[i][0] = i*Np[0];
     nsdata[i][1] = Np[1];
@@ -259,7 +314,6 @@ void pthpool_func
     /* Define the task */ 
     task[i].function  = (void*)thfunc;
     task[i].argument  = &arg[i];
-    mp[i].task = &task[i];
 
     debug_body("%s", "created task");
 
