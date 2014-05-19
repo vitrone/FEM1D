@@ -327,6 +327,7 @@ typedef struct
             }                                                            \
          }                                                               \
     } while (0)                                                          
+/*============================================================================*/
 
 /* Convert a matrix into vector 
  *
@@ -418,6 +419,19 @@ void matlib_create_xm
 /*============================================================================+/
  |BLAS Level I Routines
 /+============================================================================*/
+
+void matlib_xcopy
+(
+    const matlib_xv x,
+          matlib_xv y
+);
+
+void matlib_zcopy
+(
+    const matlib_zv x,
+          matlib_zv y
+);
+
 
 matlib_real matlib_xnrm2(matlib_xv x);
 matlib_real matlib_znrm2(matlib_zv x);

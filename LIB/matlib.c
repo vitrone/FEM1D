@@ -152,6 +152,44 @@ void matlib_create_xm
 /*============================================================================+/
  |BLAS Level I Routines
 /+============================================================================*/
+void matlib_xcopy
+(
+    const matlib_xv x,
+          matlib_xv y
+)
+{
+    debug_enter( "length of vectors: %d, %d",
+                 x.len, y.len);
+    matlib_index incx = 1;
+    matlib_index incy = 1;
+
+    assert(x.len == y.len);
+    cblas_dcopy(x.len, x.elem_p, incx, y.elem_p, incy);
+    debug_exit("%s", "");
+
+}
+
+void matlib_zcopy
+(
+    const matlib_zv x,
+          matlib_zv y
+)
+/* A X P Y
+ * y <- a * x + y
+ *
+ * */
+{
+    debug_enter( "length of vectors: %d, %d",
+                 x.len, y.len);
+    matlib_index incx = 1;
+    matlib_index incy = 1;
+
+    assert(x.len == y.len);
+    cblas_zcopy(x.len, x.elem_p, incx, y.elem_p, incy);
+    debug_exit("%s", "");
+
+}
+
 
 matlib_real matlib_xnrm2(matlib_xv x)
 {

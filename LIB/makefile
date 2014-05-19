@@ -132,7 +132,8 @@ SOURCES = fem1d.c    \
           matlib.c   \
           matlib_io.c     \
           matlib_solver.c \
-          pthpool.c  \
+	  pde1d_LSE.c     \
+          pthpool.c       \
           pfem1d.c
 
 OBJECTS = $(SOURCES:%.c=$(BUILDDIR)/%.o)
@@ -143,6 +144,7 @@ HLIST = fem1d.h    \
 	matlib.h   \
 	pthpool.h  \
 	pfem1d.h   \
+	pde1d_solver.h \
 	ehandler.h \
 	debug.h
 HEADERS = $(addprefix $(INC_DIR)/, $(HLIST))

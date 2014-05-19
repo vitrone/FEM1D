@@ -48,6 +48,7 @@ SOURCES = CUnit_matrix.c   \
           CUnit_matlib_solver.c   \
           CUnit_solver.c   \
           speedup_pfem1d.c \
+          CUnit_pde1d_LSE.c \
           CUnit_fem1d_LinearSchroedinger.c   \
           CUnit_pfem1d_LinearSchroedinger.c   \
           CUnit_fem1d_NonlinearSchroedinger.c   \
@@ -57,6 +58,7 @@ SOURCES = CUnit_matrix.c   \
 TSTBIN = BIN
 #OBJECTS = $(SOURCES:%.c=$(TSTBIN)/%.o)
 TARGETS = $(SOURCES:%.c=$(TSTBIN)/%)
+FEMLIB = ../BUILD/libfem1d.so
 
 
 .PHONY: bin_dir all clean
@@ -67,7 +69,7 @@ all : bin_dir $(TARGETS)
 bin_dir:
 	@mkdir -p $(TSTBIN)
 
-$(TSTBIN)/% : $(TSTBIN)/%.o
+$(TSTBIN)/% : $(TSTBIN)/%.o $(FEMLIB)
 	@echo "Building binary files..."
 	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
 

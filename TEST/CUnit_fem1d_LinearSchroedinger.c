@@ -406,9 +406,9 @@ void test_solve_Schroedinger_IVP1b(void)
 {
     matlib_index p = 4;
     matlib_index nr_LGL = 2*p+1;
-    matlib_index N = 800;
-    matlib_index Nt = 2000;
-    matlib_real dt = 0.5e-3;
+    matlib_index N = 8000;
+    matlib_index Nt = 10000;
+    matlib_real dt = 1.0e-3/10;
     matlib_real domain[2] = {-15.0, 15.0 };
     matlib_real e_relative;
 
@@ -1127,8 +1127,8 @@ int main(void)
     CU_TestInfo test_array[] = 
     {
         //{ "Constant potential"              , test_solve_Schroedinger_IVP1a},
-        //{ "Harmonic potential"              , test_solve_Schroedinger_IVP1b},
-        { "Linear time-dependent potential" , test_solve_Schroedinger_IVP2a},
+        { "Harmonic potential"              , test_solve_Schroedinger_IVP1b},
+        //{ "Linear time-dependent potential" , test_solve_Schroedinger_IVP2a},
         //{ "Time-dependent potential"        , test_solve_Schroedinger_IVP2b},
         //{ "Linear time-dependent potential2", test_solve_Schroedinger_IVP3a},
         CU_TEST_INFO_NULL,
