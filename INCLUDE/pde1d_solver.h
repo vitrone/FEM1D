@@ -31,11 +31,8 @@ typedef enum
 
 typedef enum
 {
-    PDE1D_LSE_CONSTANT,
-    PDE1D_LSE_TIME_INDEPENDANT, 
-    PDE1D_LSE_TIME_DEPENDENT_CONST, /* time-dependent but constant in space */ 
-    PDE1D_LSE_TIME_DEPENDENT_SEP,   /* Separable time and space parts       */ 
-    PDE1D_LSE_TIME_DEPENDENT_NSEP   /* Non-separable time and space parts   */ 
+    PDE1D_LSE_STATIC,
+    PDE1D_LSE_DYNAMIC
 
 } PDE1D_LSE_POTENTIAL;
 
@@ -55,6 +52,7 @@ typedef struct
     matlib_real  domain[2]; /* computational domain */ 
     matlib_real  dt;        /* size of time-step */
     matlib_index Nt;        /* number of time-steps */
+    matlib_index nsparse;   /* number of sparse matrices for dynamic problem */
     void**       params;    /* Could be anything! */ 
     matlib_complex alpha;   /* Coeff of u_xx */
 
@@ -65,9 +63,7 @@ typedef struct
     matlib_xv t;
 
     PDE1D_LSE_POTENTIAL phi_type;
-    
     void* phix_p;  /* potential function x-dependent part */ 
-    void* phit_p;  /* potential function t-dependent part */ 
     void* phixt_p; /* potential x- and t-parts non-separable */
 
     matlib_real  tol;
@@ -86,9 +82,16 @@ typedef struct
     matlib_xm IM;
     matlib_xv quadW;
     matlib_xm Q;
-    matlib_zm_sparse  M;
-    matlib_zm_nsparse nM;
-    matlib_complex bc[2];
+    matlib_zm q;
+
+    /* Sparse matrics 
+     * */ 
+    matlib_zm_sparse  M;  /* Stiffness + Mass excluding all time-dependent part */ 
+
+    /* Sparse Matrics - Global Mass Matrices
+     * */ 
+    matlib_zm_nsparse nM; /* mixed potentials */ 
+
     matlib_real rho;
     matlib_real irho;
     matlib_real J;
@@ -103,6 +106,22 @@ typedef struct
 /*============================================================================*/
 
 void pde1d_LSE_set_defaultsIVP(pde1d_LSE_data_t* input);
+
+void pde1d_LSE_set_potential
+(
+    pde1d_LSE_data_t*  input,
+    PDE1D_LSE_POTENTIAL phi_type,
+    void* phi_p
+);
+
+void pde1d_analytic_evol
+(
+    void** params,
+    void (*u_analytic)(),
+    matlib_xv x,
+    matlib_xv t,
+    matlib_zm u
+);
 
 void pde1d_LSE_init_solverIVP
 (
@@ -150,6 +169,11 @@ void pde1d_LSE_solve_IVP_error
     pde1d_LSE_solver_t* data
 );
 
+void pde1d_LSE_solve_IVP2_evol
+(
+    pde1d_LSE_data_t*   input,
+    pde1d_LSE_solver_t* data
+);
 void pde1d_LSE_solve_IVP2_error
 (
     pde1d_LSE_data_t*   input,

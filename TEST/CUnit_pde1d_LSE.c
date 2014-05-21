@@ -42,31 +42,8 @@ int clean_suite(void)
       return 0;
 }
 /*============================================================================*/
-void pde1d_analytic_evol
-(
-    void** params,
-    void (*u_analytic)(),
-    matlib_xv x,
-    matlib_xv t,
-    matlib_zm u
-)
-{
-    debug_enter("%s", "");
-    matlib_zv u_tmp = {.len = u.lenc, .elem_p = u.elem_p};
-    if(t.len != u.lenr)
-    {
-        term_exec("%s", "dimension mismatch!");
-    
-    }
-    for(matlib_index i=0; i<t.len; i++)
-    {
-        (*u_analytic)(params, x, t.elem_p[i], u_tmp);
-        (u_tmp.elem_p) += u.lenc;
-    }
 
-    debug_exit("%s", "");
 
-}
 /*============================================================================*/
 
 void test_pde1d_LSE_solve_IVP_evol(void)
@@ -77,8 +54,13 @@ void test_pde1d_LSE_solve_IVP_evol(void)
     pde1d_LSE_solver_t data;
 
     pde1d_LSE_set_defaultsIVP(&input);
+    input.sol_mode = PDE1D_LSE_EVOLVE_ONLY;
+    
     pde1d_LSE_init_solverIVP(&input, &data);
-
+    
+    pde1d_LSE_set_potential( &input, PDE1D_LSE_STATIC, 
+                             (void*)pde1d_LSE_constant_potential);
+    
     matlib_complex A_0 = 1.0 + I*0.0;
     matlib_complex a = 0.5 + I*0.5;
     matlib_real c = 1;
@@ -97,8 +79,7 @@ void test_pde1d_LSE_solve_IVP_evol(void)
                                               (input.t.elem_p)[0],
                                               input.u_init);
     
-    input.phix_p = pde1d_LSE_constant_potential;
-    pde1d_LSE_solve_IVP_evol(&input, &data);
+    pde1d_LSE_solve_IVP(&input, &data);
 
     matlib_zm u_evol;
     matlib_create_zm( (input.x).len, 
@@ -136,7 +117,11 @@ void test_pde1d_LSE_solve_IVP_evol2(void)
     pde1d_LSE_solver_t data;
 
     pde1d_LSE_set_defaultsIVP(&input);
+    input.sol_mode = PDE1D_LSE_EVOLVE_ONLY;
+
     pde1d_LSE_init_solverIVP(&input, &data);
+    pde1d_LSE_set_potential( &input, PDE1D_LSE_STATIC, 
+                             (void*)pde1d_LSE_harmonic_potential);
 
     void** params = NULL;
     input.params = NULL;
@@ -147,8 +132,7 @@ void test_pde1d_LSE_solve_IVP_evol2(void)
                                               (input.t.elem_p)[0],
                                               input.u_init);
     
-    input.phix_p = pde1d_LSE_harmonic_potential;
-    pde1d_LSE_solve_IVP_evol(&input, &data);
+    pde1d_LSE_solve_IVP(&input, &data);
 
     matlib_zm u_evol;
     matlib_create_zm( (input.x).len, 
@@ -177,6 +161,71 @@ void test_pde1d_LSE_solve_IVP_evol2(void)
     debug_exit("%s", "");
 }
 
+void test_pde1d_LSE_solve_IVP_evol3(void)
+{
+    debug_enter("%s", "");
+
+    pde1d_LSE_data_t  input;
+    pde1d_LSE_solver_t data;
+
+    pde1d_LSE_set_defaultsIVP(&input);
+    input.sol_mode = PDE1D_LSE_EVOLVE_ONLY;
+
+    input.Nt = 2000;
+    pde1d_LSE_init_solverIVP(&input, &data);
+    pde1d_LSE_set_potential( &input, PDE1D_LSE_DYNAMIC, 
+                             (void*)pde1d_LSE_timedependent_linear_potential);
+
+    matlib_complex A_0 = 1.0 + I*0.0;
+    matlib_complex a = 0.5 + I*0.5;
+    matlib_real c = 0.5;
+    matlib_complex phi_0 = 1.0 + I*0.0;
+    matlib_real g_0 = 1.0;
+    matlib_real mu  = 2.0*M_PI;
+
+    void* params[6] = { (void*)&A_0, 
+                        (void*)&a, 
+                        (void*)&c, 
+                        (void*)&phi_0,
+                        (void*)&g_0,
+                        (void*)&mu};
+
+    input.params = params;
+    /* Provide the initial condition 
+     * */ 
+    pde1d_LSE_Gaussian_WP_timedependent_linear_potential( params, 
+                                              input.x, 
+                                              (input.t.elem_p)[0],
+                                              input.u_init);
+    
+    pde1d_LSE_solve_IVP2_evol(&input, &data);
+
+    matlib_zm u_evol;
+    matlib_create_zm( (input.x).len, 
+                      (input.t).len, 
+                      &(u_evol), 
+                      MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
+
+    fem1d_ZILT2(input.N, data.IM, input.U_evol, u_evol);
+
+    /* Write the final evolution data to a file 
+     * */ 
+    matlib_zmwrite_csv( "evol_data.dat", u_evol);
+    /* Get the analytic evolution data
+     * */ 
+    pde1d_analytic_evol( params, pde1d_LSE_Gaussian_WP_timedependent_linear_potential,
+                         input.x, input.t, u_evol);
+    matlib_zmwrite_csv( "evol_data_analytic.dat", u_evol);
+
+
+    matlib_xvwrite_csv("x_grid.dat", 1, &input.x);
+    matlib_xvwrite_csv("t_grid.dat", 1, &input.t);
+
+    CU_ASSERT_TRUE(true);
+    pde1d_LSE_destroy_solverIVP(&input, &data);
+
+    debug_exit("%s", "");
+}
 /*============================================================================*/
 void test_pde1d_LSE_solve_IVP_error(void)
 {
@@ -194,6 +243,8 @@ void test_pde1d_LSE_solve_IVP_error(void)
 
     input.sol_mode = PDE1D_LSE_ERROR_ONLY;
     pde1d_LSE_init_solverIVP(&input, &data);
+    pde1d_LSE_set_potential( &input, PDE1D_LSE_STATIC, 
+                             (void*)pde1d_LSE_constant_potential);
     
     matlib_complex A_0 = 1.0;
     matlib_complex a = 0.5 + I*0.5;
@@ -207,9 +258,8 @@ void test_pde1d_LSE_solve_IVP_error(void)
 
     input.params = params;
     input.u_analytic = pde1d_LSE_Gaussian_WP_constant_potential;
-    input.phix_p     = pde1d_LSE_constant_potential;
 
-    pde1d_LSE_solve_IVP_error(&input, &data);
+    pde1d_LSE_solve_IVP(&input, &data);
 
 
     matlib_xv tmp_v[3] = {(input.t), (input.e_rel), (input.e_abs)};
@@ -240,12 +290,14 @@ void test_pde1d_LSE_solve_IVP_error3(void)
 
     input.sol_mode = PDE1D_LSE_ERROR_ONLY;
     pde1d_LSE_init_solverIVP(&input, &data);
+    pde1d_LSE_set_potential( &input, PDE1D_LSE_DYNAMIC, 
+                             (void*)pde1d_LSE_timedependent_linear_potential);
     
     matlib_complex A_0 = 1.0;
     matlib_complex a = 0.5 + I*0.5;
     matlib_real c = 0.5;
     matlib_complex phi_0 = 1.0;
-    matlib_real g_0 = 0;
+    matlib_real g_0 = 1;
     matlib_real mu  = 2.0*M_PI;
 
     void* params[6] = { (void*)&A_0, 
@@ -257,10 +309,8 @@ void test_pde1d_LSE_solve_IVP_error3(void)
 
     input.params = params;
     input.u_analytic = pde1d_LSE_Gaussian_WP_timedependent_linear_potential;
-    input.phixt_p    = pde1d_LSE_timedependent_linear_potential;
 
     pde1d_LSE_solve_IVP2_error(&input, &data);
-
 
     matlib_xv tmp_v[3] = {(input.t), (input.e_rel), (input.e_abs)};
     matlib_xvwrite_csv("error_evol.dat", 3, tmp_v);
@@ -296,7 +346,8 @@ int main(void)
     {
         //{ "Constant potential evolve", test_pde1d_LSE_solve_IVP_evol},
         //{ "Harmonic potential evolve", test_pde1d_LSE_solve_IVP_evol2},
-        //{ "Constant potential error" , test_pde1d_LSE_solve_IVP_error},
+        //{ "Linear time-dependent potential evolve", test_pde1d_LSE_solve_IVP_evol3},
+        { "Constant potential error" , test_pde1d_LSE_solve_IVP_error},
         { "Linear time-dependent potential error" , test_pde1d_LSE_solve_IVP_error3},
         CU_TEST_INFO_NULL,
     };

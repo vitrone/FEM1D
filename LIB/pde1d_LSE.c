@@ -33,6 +33,8 @@
 #define TOL_DEFAULT 1e-9
 #define dt_DEFAULT  1.0e-3/2.0
 
+#define nsparse_DEFAULT  20
+
 #define x_l_DEFAULT -15.0
 #define x_r_DEFAULT  15.0
 
@@ -131,6 +133,7 @@ void pde1d_LSE_set_defaultsIVP(pde1d_LSE_data_t* input)
     
     input->dt = dt_DEFAULT;
     input->Nt = Nt_DEFAULT;
+    input->nsparse = nsparse_DEFAULT;
 
     input->tol = TOL_DEFAULT;
 
@@ -141,55 +144,75 @@ void pde1d_LSE_set_defaultsIVP(pde1d_LSE_data_t* input)
     input->u_analytic = NULL;
     input->params  = NULL;
     input->phix_p  = NULL;
-    input->phit_p  = NULL;
     input->phixt_p = NULL;
 
     debug_exit("%s", "");
 }
 /*============================================================================*/
-#if 0
+
 void pde1d_LSE_set_potential
 (
-    pde1d_LSE_data_t*  input,
+    pde1d_LSE_data_t*   input,
     PDE1D_LSE_POTENTIAL phi_type,
-    void* phi_p[2]
+    void* phi_p
 )
 {
-
+    input->phi_type = phi_type;
     switch (input->phi_type)
     {
-        case PDE1D_LSE_CONSTANT :
-            input->phix_p  = phi_p;
-            input->phit_p  = NULL;
+        case PDE1D_LSE_STATIC :
+            if(phi_p != NULL)
+            {
+                input->phix_p  = phi_p;
+            }
+            else
+            {
+                term_exec("%s", "potential function is a NULL pointer ");
+            }
             input->phixt_p = NULL;
             break;
 
-        case PDE1D_LSE_TIME_IDENPENDENT :
-            input->phix_p  = phi_p;
-            input->phit_p  = NULL;
-            input->phixt_p = NULL;
-            break;
-
-        case PDE1D_LSE_TIME_DENPENDENT_CONST :
+        case PDE1D_LSE_DYNAMIC :
+            if(phi_p != NULL)
+            {
+                input->phixt_p = phi_p;
+            }
+            else
+            {
+                term_exec("%s", "potential function is a NULL pointer ");
+            }
             input->phix_p  = NULL;
-            input->phit_p  = phi_p;
-            input->phixt_p = NULL;
-            break;
-
-        case PDE1D_LSE_TIME_DENPENDENT_SEP :
-            input->phix_p  = phi_p;
-            input->phit_p  = phi_p+1;
-            input->phixt_p = NULL;
-            break;
-
-        case PDE1D_LSE_TIME_DENPENDENT_NSEP :
-            input->phix_p  = NULL;
-            input->phit_p  = NULL;
-            input->phixt_p = phi_p;
             break;
     }
 }
-#endif
+/*============================================================================*/
+
+void pde1d_analytic_evol
+(
+    void** params,
+    void (*u_analytic)(),
+    matlib_xv x,
+    matlib_xv t,
+    matlib_zm u
+)
+{
+    debug_enter("%s", "");
+    matlib_zv u_tmp = {.len = u.lenc, .elem_p = u.elem_p};
+    if(t.len != u.lenr)
+    {
+        term_exec("%s", "dimension mismatch!");
+    
+    }
+    for(matlib_index i=0; i<t.len; i++)
+    {
+        (*u_analytic)(params, x, t.elem_p[i], u_tmp);
+        (u_tmp.elem_p) += u.lenc;
+    }
+
+    debug_exit("%s", "");
+
+}
+
 /*============================================================================*/
 
 void pde1d_LSE_init_solverIVP
@@ -208,11 +231,27 @@ void pde1d_LSE_init_solverIVP
     debug_body( "domain: [%0.4f, %0.4f]", 
                 input->domain[0], input->domain[1]);
 
-    data->rho  = 2.0/input->dt;
-    data->irho = input->dt/2.0;
-    /* Jacobian of transformation 
-     * */ 
-    data->J = 0.5*(input->domain[1]-input->domain[0])/input->N;
+    if(input->domain[0] >= input->domain[1])
+    {
+        term_exec("%s", "The computational domain is ill-defined.");
+    }
+    else
+    {
+        /* Jacobian of transformation 
+         * */ 
+        data->J = 0.5*(input->domain[1]-input->domain[0])/input->N;
+    }
+
+    if(input->dt > 0)
+    {
+        data->rho  = 2.0/input->dt;
+        data->irho = input->dt/2.0;
+    }
+    else
+    {
+        term_exec("%s", "The time-step must be a positive non-zero quantity.");
+    }
+
     /* Stiffness Matrix Coeff.
      * */
     data->s_coeff = I*(data->irho)*(input->alpha)/((data->J)*(data->J));     
@@ -316,21 +355,25 @@ void pde1d_LSE_init_solverIVP
                       var_p_[4], 
                       MATLIB_COL_VECT);
 
-    /* Initialize the evolution matrix in column major format 
-     * Stores the field in Legendre basis
-     * matrix: U_evol
-     * */ 
-    matlib_create_zm( dim, 
-                      (input->t).len, 
-                      &(input->U_evol), 
-                      MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
-    
     if(input->sol_mode==PDE1D_LSE_ERROR_ONLY)
     {
         matlib_create_xv( (input->Nt)+1,
                           &(input->e_rel), MATLIB_COL_VECT);
         matlib_create_xv( (input->Nt)+1,
                           &(input->e_abs), MATLIB_COL_VECT);
+    }
+    else
+    {
+        /* Initialize the evolution matrix in column major format 
+         * Stores the field in Legendre basis
+         * matrix: U_evol
+         * */ 
+        matlib_create_zm( dim, 
+                          (input->t).len, 
+                          &(input->U_evol), 
+                          MATLIB_COL_MAJOR, MATLIB_NO_TRANS);
+    
+
     }
     debug_exit("%s", "");
 }
@@ -344,9 +387,103 @@ void pde1d_LSE_solve_IVP
 )
 {
     debug_enter("%s", "");
+    
+    void (*LSE_solver_IVP_p[2])();
+ 
+    switch(input->sol_mode)
+    {
+        case PDE1D_LSE_EVOLVE_ONLY:
+            LSE_solver_IVP_p[0] = pde1d_LSE_solve_IVP_evol;
+            LSE_solver_IVP_p[1] = pde1d_LSE_solve_IVP2_evol;
+            break;
+        case PDE1D_LSE_ERROR_ONLY:
+            LSE_solver_IVP_p[0] = pde1d_LSE_solve_IVP_error;
+            LSE_solver_IVP_p[1] = pde1d_LSE_solve_IVP2_error;
+            break;
+    }
+
+
+    switch(input->phi_type)
+    {
+        case PDE1D_LSE_STATIC:
+            (*LSE_solver_IVP_p[0])(input, data);
+            break;
+
+        case PDE1D_LSE_DYNAMIC:
+            (*LSE_solver_IVP_p[1])(input, data);
+            break;
+    }
 
 }
 
+void pde1d_LSE_destroy_solverIVP
+(
+    pde1d_LSE_data_t*   input,
+    pde1d_LSE_solver_t* data
+)
+{
+    debug_enter("%s", "Freeing all initialized memory.");
+
+    matlib_free(input->x.elem_p);
+    debug_body("Freed: %s", "x");
+
+    matlib_free(input->t.elem_p);
+    debug_body("Freed: %s", "t");
+    
+    matlib_free(input->u_init.elem_p);
+    debug_body("Freed: %s", "u_init");
+    
+    matlib_free(data->xi.elem_p);
+    debug_body("Freed: %s", "xi");
+
+    matlib_free(data->quadW.elem_p);
+    debug_body("Freed: %s", "quadW");
+
+    matlib_free(data->FM.elem_p);
+    debug_body("Freed: %s", "FM");
+
+    matlib_free(data->IM.elem_p);
+    debug_body("Freed: %s", "IM");
+
+    matlib_free(data->Q.elem_p);
+    debug_body("Freed: %s", "Q");
+
+    switch(input->phi_type)
+    {
+        case PDE1D_LSE_STATIC:
+            matlib_free(data->M.elem_p);
+            matlib_free(data->M.colIn);
+            matlib_free(data->M.rowIn);
+            debug_body("Freed: %s", "M");
+            break;
+        case PDE1D_LSE_DYNAMIC:
+            break;
+    }
+    if(input->sol_mode==PDE1D_LSE_ERROR_ONLY)
+    {
+        matlib_free(input->e_rel.elem_p);
+        debug_body("Freed: %s", "e_rel");
+
+        matlib_free(input->e_abs.elem_p);
+        debug_body("Freed: %s", "e_abs");
+    }
+    
+    matlib_index i;
+    void* ptr = NULL;
+    for(i=0; i<data->nr_vars; i++)
+    {
+        ptr = ((matlib_zv*)data->var_p[i])->elem_p;
+        matlib_free(ptr);
+    }
+    matlib_free(data->var_p);
+    debug_body("Freed: %s", "var_p");
+
+    debug_exit("%s", "");
+}
+
+/*============================================================================*/
+/* Static potential case
+ * */ 
 void pde1d_LSE_solve_IVP_evol
 (
     pde1d_LSE_data_t*  input,
@@ -563,67 +700,131 @@ void pde1d_LSE_solve_IVP_error
     debug_exit("%s", "");
 }
 
+/*============================================================================*/
 
-void pde1d_LSE_destroy_solverIVP
+void pde1d_LSE_solve_IVP2_evol
 (
     pde1d_LSE_data_t*   input,
     pde1d_LSE_solver_t* data
 )
 {
-    debug_enter("%s", "Freeing all initialized memory.");
 
-    matlib_free(input->x.elem_p);
-    debug_body("Freed: %s", "x");
+    debug_enter( "polynomial degree: %d, "
+                 "nr. of LGL points: %d",
+                 input->p, input->nr_LGL );
 
-    matlib_free(input->t.elem_p);
-    debug_body("Freed: %s", "t");
+    matlib_index i, j;
     
-    matlib_free(input->u_init.elem_p);
-    debug_body("Freed: %s", "u_init");
+    /* Other temporary variables 
+     * */ 
+    matlib_zv Pvb   = *(matlib_zv*)(data->var_p[0]);
+    matlib_zv V_vb  = *(matlib_zv*)(data->var_p[1]);
+    matlib_zv V_tmp = *(matlib_zv*)(data->var_p[2]);
+    matlib_zv U_tmp = *(matlib_zv*)(data->var_p[3]);
+    matlib_zv u_exact = *(matlib_zv*)(data->var_p[4]);
+    debug_body("%s", "declared temporary vars");
+
+    /* declare potential function
+     * */ 
+    void (*phi_p)() = input->phixt_p;
+    debug_body("%s", "potential function declared");
+
+    /* Assemble the global mass matrix 
+     * */ 
+    matlib_zm phi, q;
+    matlib_index nsparse = input->nsparse;
+    fem1d_zm_nsparse_GMM( input->p, input->N, nsparse, 
+                          data->Q, &phi, &q, &data->nM, FEM1D_GMM_INIT);
+
+    fem1d_zm_nsparse_GMM( input->p, input->N, nsparse, data->Q, 
+                          NULL, NULL, &data->nM, FEM1D_GET_SPARSITY_ONLY);
     
-    matlib_free(data->xi.elem_p);
-    debug_body("Freed: %s", "xi");
+    debug_body("phi: %d-by-%d", phi.lenc, phi.lenr);
+    /* Setup the sparse linear system */
+    /* Solve the equation while marching in time 
+     *
+     * Linear system M * V_vb = Pvb 
+     * */
+    matlib_zv U_tmp1 = { .len    = input->U_evol.lenc, 
+                         .elem_p = input->U_evol.elem_p, 
+                         .type   = MATLIB_COL_VECT};
 
-    matlib_free(data->quadW.elem_p);
-    debug_body("Freed: %s", "quadW");
+    fem1d_ZFLT(input->N, data->FM, input->u_init, U_tmp);
+    matlib_zcopy(U_tmp, U_tmp1 );
+    (U_tmp1.elem_p) += (U_tmp1.len); 
 
-    matlib_free(data->FM.elem_p);
-    debug_body("Freed: %s", "FM");
+    pardiso_solver_t eq_data = { .nsparse  = nsparse, 
+                                 .mnum     = 1, 
+                                 .sol_enum = PARDISO_LHS, 
+                                 .mtype    = PARDISO_COMPLEX_SYM,
+                                 .smat_p   = (void*)&(data->nM),
+                                 .rhs_p    = (void*)&Pvb,
+                                 .sol_p    = (void*)&V_vb};
 
-    matlib_free(data->IM.elem_p);
-    debug_body("Freed: %s", "IM");
+    debug_body("%s", "Solver data initialized");
 
-    matlib_free(data->Q.elem_p);
-    debug_body("Freed: %s", "Q");
+    BEGIN_DTRACE
+        matlib_complex *ptr;
+        for(matlib_index k = 0; k< nsparse; k++)
+        {
+            debug_print( "dimension of the sparse square matrix: %d", 
+                         data->nM.lenc);
+            ptr = data->nM.elem_p[k];
+            for(i=0; i<data->nM.lenc; i++)
+            {
+                for(j=data->nM.rowIn[i]; j<data->nM.rowIn[i+1]; j++)
+                {
+                    debug_print( "M(%d,%d): % 0.16f %+0.16fi",
+                                 i, data->nM.colIn[j], ptr[j]);
+                }
+            }
+        }
+    END_DTRACE
 
-    //matlib_free(data->M.elem_p);
-    //matlib_free(data->M.colIn);
-    //matlib_free(data->M.rowIn);
-    //debug_body("Freed: %s", "M");
+    eq_data.phase_enum = PARDISO_INIT;
+    matlib_pardiso(&eq_data);
+    debug_body("%s", "PARDISO initialized");
 
-    if(input->sol_mode==PDE1D_LSE_ERROR_ONLY)
+    matlib_index Nt_ = input->Nt/nsparse;
+    matlib_xv t_tmp  = {.len = (nsparse + 1), .elem_p = input->t.elem_p}; 
+    
+    for (i=0; i<Nt_; i++)
     {
-        matlib_free(input->e_rel.elem_p);
-        debug_body("Freed: %s", "e_rel");
+        (*phi_p)(input->params, data->m_coeff, input->x, t_tmp, phi);
+        fem1d_zm_nsparse_GMM( input->p, input->N, nsparse, data->Q, 
+                              &phi, &q, &data->nM, FEM1D_GET_NZE_ONLY);
+        pde1d_zm_nsparse_GSM(input->N, data->s_coeff, data->nM);
 
-        matlib_free(input->e_abs.elem_p);
-        debug_body("Freed: %s", "e_abs");
+        for(j=0; j<nsparse; j++)
+        {
+            debug_body("begin iteration: %d", i*nsparse+j);
+            fem1d_ZPrjL2F(input->p, U_tmp, Pvb);
+
+            eq_data.mnum = j+1;
+            eq_data.phase_enum = PARDISO_ANALYSIS_AND_FACTOR;
+            matlib_pardiso(&eq_data);
+
+            eq_data.phase_enum = PARDISO_SOLVE_AND_REFINE;
+            matlib_pardiso(&eq_data);
+            
+            fem1d_ZF2L(input->p, V_vb, V_tmp);
+
+            /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
+            matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
+            matlib_zcopy(U_tmp, U_tmp1 );
+            (U_tmp1.elem_p) += (U_tmp1.len);
+        }
+        t_tmp.elem_p += nsparse;
     }
-    
-    matlib_index i;
-    void* ptr = NULL;
-    for(i=0; i<data->nr_vars; i++)
-    {
-        ptr = ((matlib_zv*)data->var_p[i])->elem_p;
-        matlib_free(ptr);
-    }
-    matlib_free(data->var_p);
-    debug_body("Freed: %s", "var_p");
+
+    eq_data.phase_enum = PARDISO_FREE;
+    matlib_pardiso(&eq_data);
+    fem1d_zm_nsparse_GMM( input->p, input->N, nsparse, 
+                          data->Q, &phi, &q, &data->nM, FEM1D_GMM_FREE);
 
     debug_exit("%s", "");
 }
 
-/*============================================================================*/
 
 void pde1d_LSE_solve_IVP2_error
 (
@@ -663,7 +864,7 @@ void pde1d_LSE_solve_IVP2_error
     /* Assemble the global mass matrix 
      * */ 
     matlib_zm phi, q;
-    matlib_index nsparse = 20;
+    matlib_index nsparse = input->nsparse;
     fem1d_zm_nsparse_GMM( input->p, input->N, nsparse, 
                           data->Q, &phi, &q, &data->nM, FEM1D_GMM_INIT);
 
@@ -679,7 +880,6 @@ void pde1d_LSE_solve_IVP2_error
 
     fem1d_ZFLT(input->N, data->FM, input->u_init, U_tmp);
 
-    matlib_real norm_actual;
 
     pardiso_solver_t eq_data = { .nsparse  = nsparse, 
                                  .mnum     = 1, 
@@ -716,6 +916,7 @@ void pde1d_LSE_solve_IVP2_error
     matlib_index Nt_ = input->Nt/nsparse;
     matlib_xv t_tmp  = {.len = (nsparse + 1), .elem_p = input->t.elem_p}; 
 
+    matlib_real norm_actual;
     (input->e_abs).elem_p[0] = 0;
     (input->e_rel).elem_p[0] = 0;
     
@@ -743,7 +944,7 @@ void pde1d_LSE_solve_IVP2_error
             /* 2.0 * V_tmp -U_tmp --> U_tmp*/ 
             matlib_zaxpby(2.0, V_tmp, -1.0, U_tmp );
 
-            /* Using phi to store the analytic solution
+            /* Using u_exact to store the analytic solution
              * */ 
             (*u_analytic)(input->params, input->x, t_tmp.elem_p[j+1], u_exact);
             fem1d_ZFLT(input->N, data->FM, u_exact, V_tmp);
@@ -770,8 +971,6 @@ void pde1d_LSE_solve_IVP2_error
 
     debug_exit("%s", "");
 }
-
-
 
 /*============================================================================*/
 void pde1d_LSE_Gaussian_WP_constant_potential
@@ -1014,7 +1213,6 @@ void pde1d_LSE_Gaussian_WP_timedependent_linear_potential
     matlib_real C4 = 0.5*c;
 
     matlib_real *xptr;
-
     matlib_real Xi, x1;
     
     matlib_real theta  = mu*t;
@@ -1044,18 +1242,25 @@ void pde1d_LSE_timedependent_linear_potential
     debug_enter("%s", "");
     matlib_index i, j;
 
+    matlib_complex phi_0 = *(matlib_complex*) params[3];
     matlib_real g_0 = *(matlib_real*) params[4];
     matlib_real mu  = *(matlib_real*) params[5];
 
     debug_body("g_0: %0.4f, mu: %0.4f", g_0, mu);
-    assert(t.len == y.lenr+1);
+    assert(t.len == (y.lenr+1));
+    
+    matlib_complex a = 0, b = 0;
+    if(m_coeff != NULL)
+    {
+        a = m_coeff[0];
+        b = m_coeff[1];
+    }
 
     for(j=0; j<y.lenr; j++)
     {
         for (i=0; i<x.len; i++)
         {
-            *(y.elem_p) =   m_coeff[0]
-                          + 0.5*m_coeff[1]**(x.elem_p+i)*g_0*
+            *(y.elem_p) =  a + b*phi_0 + 0.5*b**(x.elem_p+i)*g_0*
                            (cos(mu*(t.elem_p[j]))+cos(mu*(t.elem_p[j+1])));
             y.elem_p++;
         }
