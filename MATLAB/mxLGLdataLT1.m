@@ -1,7 +1,8 @@
-function LGLdataLT1
-% LGLDATALT1 Data for Discrete Legendre Transforms
-%     [zeros, quadW] = LGLdataLT(degree, tolerance) calculates the zeros of
-%     the LGL polynomial and the associated Gauss quadrature weights.
+function mxLGLdataLT1
+% mxLGLdataLT1 Data for Discrete Legendre Transforms
+%     [zeros, quadW] = LGLdataLT1(degree, tolerance) 
+%     Calculates the zeros of the LGL polynomial and the associated Gauss 
+%     quadrature weights.
 %     degree    - highest degree of the polynomials used
 %     quadW     - Gauss quadrature weights corresponding to the LGL points
 %     

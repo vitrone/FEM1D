@@ -10,6 +10,7 @@
 #include "matrix.h"
 #include "legendre.h"
 
+#define TOL_DEFAULT (1e-6)
 
 void mexFunction
 (
@@ -29,11 +30,29 @@ void mexFunction
         mexErrMsgIdAndTxt("LGLdataLT2:nlhs","Four outputs required.");
     } 
 
-    matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
-    double tol     = (double)mxGetScalar(prhs[1]);
-    
-    plhs[0] = mxCreateDoubleMatrix( p+1, 1, mxREAL);
-    plhs[1] = mxCreateDoubleMatrix( p+1, 1, mxREAL);
+    matlib_index p;
+    matlib_real tol = (matlib_real )mxGetScalar(prhs[1]);
+
+    if(mxGetScalar(prhs[0])>1)
+    {
+        p = (matlib_index)floor(mxGetScalar(prhs[0]));
+    }
+    else
+    {
+        mexErrMsgIdAndTxt( "FEM1D:mxLGLdataLT1:N", "Polynomial degree must be>1.");
+    } 
+
+    if((tol<0) || (tol>1))
+    {
+        mexWarnMsgIdAndTxt( "LGLdataLT1:Tol",
+                            "Tolerance must be positive real number <1"
+                            "(proceeding with default).");
+        tol = TOL_DEFAULT;
+        
+    }
+
+    plhs[0] = mxCreateDoubleMatrix( p+1,   1, mxREAL);
+    plhs[1] = mxCreateDoubleMatrix( p+1,   1, mxREAL);
     plhs[2] = mxCreateDoubleMatrix( p+1, p+1, mxREAL);
     plhs[3] = mxCreateDoubleMatrix( p+1, p+1, mxREAL);
     

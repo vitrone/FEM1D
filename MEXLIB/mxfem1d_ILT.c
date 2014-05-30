@@ -27,6 +27,8 @@ void mexFunction
 )
 {
 
+    /* Validate Input data
+     * */ 
     if(nrhs!=3) 
     {
         mexErrMsgIdAndTxt("FEM1D:ILT:nrhs","Three inputs required.");
@@ -36,11 +38,32 @@ void mexFunction
         mexErrMsgIdAndTxt("FEM1D:ILT:nlhs","One output required.");
     } 
     
-    matlib_index N = (matlib_index)mxGetScalar(prhs[0]);
+    matlib_index N;
+    if(mxGetScalar(prhs[0])>0) 
+    {
+        N = (matlib_index)floor(mxGetScalar(prhs[0]));
+    }
+    else
+    {
+        mexErrMsgIdAndTxt( "FEM1D:ILT:N", 
+                           "Number of finite-elements must be a positive integer.");
+    } 
     
     if( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1])) 
     {
         mexErrMsgIdAndTxt("FEM1D:ILT:IM","Input matrix must be type double.");
+    }
+    
+    if (mxGetNumberOfDimensions(prhs[1]) != 2)
+    {
+        mexErrMsgIdAndTxt( "FEM1d:ILT", 
+                           "Transformation matrix must be two dimensional.");
+    }
+    
+    if (mxGetNumberOfDimensions(prhs[2]) != 2)
+    {
+        mexErrMsgIdAndTxt( "FEM1d:ILT", 
+                           "Third argument must be a vector or a matrix.");
     }
 
     matlib_xm IM = { .lenc = mxGetM(prhs[1]), 
@@ -56,6 +79,10 @@ void mexFunction
                      .order  = MATLIB_COL_MAJOR};
     
     matlib_index dim = N*(IM.lenc-1)+1;
+    if(N*IM.lenr != Ur.lenc) 
+    {
+        mexErrMsgIdAndTxt("FEM1D:ILT","Dimension mismatch.");
+    } 
 
     if(mxIsComplex(prhs[2]))
     {

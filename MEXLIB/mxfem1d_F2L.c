@@ -25,16 +25,29 @@ void mexFunction
 
     if(nrhs!=2) 
     {
-        mexErrMsgIdAndTxt("FEM1D:F2L:nrhs","Two inputs required.");
+        mexErrMsgTxt("Two inputs required.");
     }
     if(nlhs!=1) 
     {
-        mexErrMsgIdAndTxt("FEM1D:F2L:nlhs","One output required.");
+        mexErrMsgTxt("One output required.");
     } 
     
-    matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
+    matlib_index p;
+    if(mxGetScalar(prhs[0])>1)
+    {
+        p = (matlib_index)floor(mxGetScalar(prhs[0]));
+    }
+    else
+    {
+        mexErrMsgTxt("Polynomial degree must be>1.");
+    } 
 
-    matlib_xv vbr = { .len    = mxGetN(prhs[1]), 
+    matlib_int len = mxGetNumberOfElements(prhs[1]);
+    if((len<3) || (((len-1) % p)!= 0))
+    {
+        mexErrMsgTxt("Length of input vector is incorrect.");
+    }
+    matlib_xv vbr = { .len    = len, 
                       .elem_p = mxGetPr(prhs[1]),
                       .type   = MATLIB_COL_VECT};
 

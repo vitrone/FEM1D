@@ -22,23 +22,48 @@ void mexFunction
 
     if(nrhs!=2) 
     {
-        mexErrMsgIdAndTxt("LGLdata:FM:nrhs","Two inputs required.");
+        mexErrMsgTxt("Two inputs required.");
     }
     if(nlhs!=1) 
     {
-        mexErrMsgIdAndTxt("LGLdata:FM:nlhs","One output required.");
+        mexErrMsgTxt("One output required.");
     } 
     if( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1])) 
     {
-        mexErrMsgIdAndTxt("LGLdata:FM","Input vector must be type double.");
+        mexErrMsgTxt("Input vector must be type double.");
     }
     
-    matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
+    matlib_index p;
+    if(mxGetScalar(prhs[0])>1)
+    {
+        p = (matlib_index)floor(mxGetScalar(prhs[0]));
+    }
+    else
+    {
+        mexErrMsgTxt("Polynomial degree must be>1.");
+    } 
+    /* Second input must be LGL-points distributed in the interval [-1, 1]
+     * */ 
+    if( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1])) 
+    {
+        mexErrMsgTxt("Input vector must be type double.");
+    }
+    if (mxGetNumberOfDimensions(prhs[1]) != 2)
+    {
+        mexErrMsgTxt("Vector input required for LGL-points.");
+    }
 
     double* xi = mxGetPr(prhs[1]);
-    matlib_index P = (matlib_index)mxGetNumberOfElements(prhs[1])-1;
-    
-    
+    matlib_index P;
+    if(mxGetNumberOfElements(prhs[1])>p)
+    {
+        P = (matlib_index)mxGetNumberOfElements(prhs[1])-1;
+    }
+    else
+    {
+        mexErrMsgTxt("Number of LGL-points > degree of Legendre polynomials used.");
+    }
+
     plhs[0] = mxCreateDoubleMatrix( p+1, P+1, mxREAL);
     double *FM = mxGetPr(plhs[0]);
     forward_transform_matrix2_colmajor( p, P, xi, FM);

@@ -26,17 +26,38 @@ void mexFunction
 
     if(nrhs!=3) 
     {
-        mexErrMsgIdAndTxt("FEM1D:Norm2:nrhs","Three inputs required.");
+        mexErrMsgTxt("Three inputs required.");
     }
     if(nlhs!=1) 
     {
-        mexErrMsgIdAndTxt("FEM1D:Norm2:nlhs","One output required.");
+        mexErrMsgTxt("One output required.");
     } 
     
-    matlib_index p = (matlib_index)mxGetScalar(prhs[0]);
-    matlib_index N = (matlib_index)mxGetScalar(prhs[1]);
+    matlib_index p;
+    if(mxGetScalar(prhs[0])>1)
+    {
+        p = (matlib_index)floor(mxGetScalar(prhs[0]));
+    }
+    else
+    {
+        mexErrMsgTxt("Polynomial degree must be>1.");
+    } 
+    matlib_index N;
+    if(mxGetScalar(prhs[1])>0) 
+    {
+        N = (matlib_index)floor(mxGetScalar(prhs[1]));
+    }
+    else
+    {
+        mexErrMsgTxt("Number of finite-elements must be a positive integer.");
+    } 
     
     matlib_index dim = N*(p+1);
+    if(mxGetNumberOfElements(prhs[2])!= dim)
+    {
+        mexErrMsgTxt("Size of the input vector is inconsistent.");
+
+    }
     matlib_xv ur = { .len = dim, 
                      .elem_p = mxGetPr(prhs[2]),
                      .type   = MATLIB_COL_VECT };
@@ -54,4 +75,3 @@ void mexFunction
     }
     plhs[0] = mxCreateDoubleScalar(sqrt(rnorm2*rnorm2 + inorm2*inorm2));
 }
-    

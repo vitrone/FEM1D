@@ -14,7 +14,7 @@
 #include <errno.h>
 #include "mkl.h"
 
-//#define NDEBUG
+#define NDEBUG
 #define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
@@ -1613,19 +1613,19 @@ int main()
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        //{ "Interpolation for polynomial"           , test_interpolation1 },
-        //{ "Interpolation for Gaussian"             , test_interpolation2 },
-        //{ "Interpolation for Gaussian(t)"          , test_interpolation3 },
-        //{ "Interpolation for complex Gaussian"     , test_interpolation4 },
-        //{ "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
-        //{ "L2-Norm for Real"                       , test_L2_dnorm       },
-        //{ "L2-Norm for Complex"                    , test_L2_znorm       },
-        //{ "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
-        //{ "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
-        //{ "Quadrature Matrix"                      , test_fem1d_quadM1   },
-        //{ "MEMI"                                   , test_fem1d_MEMI     },
-        //{ "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
-        //{ "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
+        { "Interpolation for polynomial"           , test_interpolation1 },
+        { "Interpolation for Gaussian"             , test_interpolation2 },
+        { "Interpolation for Gaussian(t)"          , test_interpolation3 },
+        { "Interpolation for complex Gaussian"     , test_interpolation4 },
+        { "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
+        { "L2-Norm for Real"                       , test_L2_dnorm       },
+        { "L2-Norm for Complex"                    , test_L2_znorm       },
+        { "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
+        { "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
+        { "Quadrature Matrix"                      , test_fem1d_quadM1   },
+        { "MEMI"                                   , test_fem1d_MEMI     },
+        { "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
+        { "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
         { "N-Sparse"                          , test_fem1d_zm_nsparse_GMM},
         CU_TEST_INFO_NULL,
     };

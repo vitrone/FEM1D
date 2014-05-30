@@ -1,4 +1,4 @@
-function LGLdataLT2
+function mxLGLdataLT2
 % LGLdataLT2 Data for Discrete Legendre Transforms
 %     [zeros, quadW, IM, FM] = LGLdataLT(degree, tolerance) calculates neccessary 
 %     data for discrete Legendre transform on Legendre-Gauss-Lobbato (LGL) 

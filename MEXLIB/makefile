@@ -53,6 +53,8 @@ SOURCES =   mxLGLdataFM.c    \
             mxfem1d_ILT.c    \
             mxfem1d_F2L.c    \
             mxfem1d_L2F.c    \
+            mxfem1d_quadM.c    \
+            mxfem1d_sparse_GMM.c    \
             mxfem1d_PrjL2F.c \
             mxfem1d_Norm2.c  \
             gfilters.c       \
