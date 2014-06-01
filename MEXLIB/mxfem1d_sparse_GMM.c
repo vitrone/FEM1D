@@ -74,9 +74,9 @@ void mexFunction
     matlib_index nnz = N*(Q.lenc-1)+1;
 
     matlib_index dim = N*p+1;
-    matlib_index* rowIn  = calloc( dim+1, sizeof(matlib_index));
-    matlib_index* colIn  = calloc(   nnz, sizeof(matlib_index));
-    matlib_real* elem_p  = calloc(   nnz, sizeof(matlib_real));
+    matlib_index* rowIn = calloc( dim+1, sizeof(matlib_index));
+    matlib_index* colIn = calloc(   nnz, sizeof(matlib_index));
+    matlib_real* elem_p = calloc(   nnz, sizeof(matlib_real));
 
     matlib_xv q;
     matlib_create_xv( Q.lenc*N, &q, MATLIB_COL_VECT);
@@ -90,6 +90,7 @@ void mexFunction
     {
         matlib_xv phi_i = { .len = phi_r.len,
                             .elem_p = mxGetPi(prhs[2])};
+
         plhs[0] = mxCreateSparse( dim, dim, nnz, mxCOMPLEX); 
 
         mwSize* sir = mxGetIr(plhs[0]);

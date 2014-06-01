@@ -14,8 +14,8 @@
 #include <errno.h>
 #include "mkl.h"
 
-#define NDEBUG
-#define MATLIB_NTRACE_DATA
+//#define NDEBUG
+//#define MATLIB_NTRACE_DATA
 
 #include "legendre.h"
 #include "fem1d.h"
@@ -877,8 +877,8 @@ matlib_real test_fem1d_XL2F_general
     matlib_xaxpy(-1.0, U, U1);
     matlib_real e_relative = matlib_xnrm2(U1)/norm_actual;
 
+    debug_exit("Relative error: % 0.16g", e_relative);
     return(e_relative);
-    debug_exit("Relative interpolation error: % 0.16g", e_relative);
 }
 
 matlib_real test_fem1d_ZL2F_general
@@ -930,8 +930,8 @@ matlib_real test_fem1d_ZL2F_general
     matlib_zaxpy(-1.0, U, U1);
     matlib_real e_relative = matlib_znrm2(U1)/norm_actual;
 
+    debug_exit("Relative error: % 0.16g", e_relative);
     return(e_relative);
-    debug_exit("Relative interpolation error: % 0.16g", e_relative);
 }
 /*============================================================================*/
 
@@ -1613,20 +1613,20 @@ int main()
     /* Create a test array */
     CU_TestInfo test_array[] = 
     {
-        { "Interpolation for polynomial"           , test_interpolation1 },
-        { "Interpolation for Gaussian"             , test_interpolation2 },
-        { "Interpolation for Gaussian(t)"          , test_interpolation3 },
-        { "Interpolation for complex Gaussian"     , test_interpolation4 },
-        { "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
-        { "L2-Norm for Real"                       , test_L2_dnorm       },
-        { "L2-Norm for Complex"                    , test_L2_znorm       },
-        { "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
-        { "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
-        { "Quadrature Matrix"                      , test_fem1d_quadM1   },
-        { "MEMI"                                   , test_fem1d_MEMI     },
+        //{ "Interpolation for polynomial"           , test_interpolation1 },
+        //{ "Interpolation for Gaussian"             , test_interpolation2 },
+        //{ "Interpolation for Gaussian(t)"          , test_interpolation3 },
+        //{ "Interpolation for complex Gaussian"     , test_interpolation4 },
+        //{ "Interpolation for complex Gaussian(t)"  , test_interpolation5 },
+        //{ "L2-Norm for Real"                       , test_L2_dnorm       },
+        //{ "L2-Norm for Complex"                    , test_L2_znorm       },
+        //{ "Transformation L2F, F2L for Real"       , test_fem1d_XL2F1    },
+        //{ "Transformation L2F, F2L for Complex"    , test_fem1d_ZL2F1    },
+        //{ "Quadrature Matrix"                      , test_fem1d_quadM1   },
+        //{ "MEMI"                                   , test_fem1d_MEMI     },
         { "Global mass matrix for Gaussian real"   , test_fem1d_XGMM1    },
-        { "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
-        { "N-Sparse"                          , test_fem1d_zm_nsparse_GMM},
+        //{ "Global mass matrix for Gaussian complex", test_fem1d_ZGMM1    },
+        //{ "N-Sparse"                          , test_fem1d_zm_nsparse_GMM},
         CU_TEST_INFO_NULL,
     };
 

@@ -57,18 +57,18 @@ void mexFunction
     if(mxIsComplex(prhs[1]))
     {
         matlib_xv vbi = { .len    = vbr.len, 
-                          .elem_p = mxGetPr(prhs[1]),
+                          .elem_p = mxGetPi(prhs[1]),
                           .type   = MATLIB_COL_VECT};
         plhs[0] = mxCreateDoubleMatrix( dim, 1, mxCOMPLEX);
         matlib_xv ur = { .len    = dim, 
                          .elem_p = mxGetPr(plhs[0]),
                          .type   = MATLIB_COL_VECT};
         matlib_xv ui = { .len    = dim, 
-                         .elem_p = mxGetPr(plhs[0]),
+                         .elem_p = mxGetPi(plhs[0]),
                          .type   = MATLIB_COL_VECT};
 
         fem1d_XF2L(p, vbr, ur);
-        fem1d_XF2L(p, vbi, ur);
+        fem1d_XF2L(p, vbi, ui);
     }
     else
     {

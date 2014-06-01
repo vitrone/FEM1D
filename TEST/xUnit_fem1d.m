@@ -9,7 +9,7 @@ classdef xUnit_fem1d < matlab.unittest.TestCase
             x_r =  5;
             N   =  10;
             p   =  4;
-            poly_fun = @(x) x.^p;
+            poly_fun = @(x) (1+1i)*x.^p;
             tol = 1e-9;
             [xir, quadW, IM, FM] = mxLGLdataLT2( p, tol);
             x = ref2mesh (xir, N, [x_l x_r]);
@@ -33,7 +33,7 @@ classdef xUnit_fem1d < matlab.unittest.TestCase
             x_r =  5;
             N   =  10;
             p   =  4;
-            poly_fun = @(x) [x.^(p-2), x.^(p-1), x.^(p)];
+            poly_fun = @(x) (1+1i)*[x.^(p-2), x.^(p-1), x.^(p)];
             tol = 1e-9;
             [xir, quadW, IM, FM] = mxLGLdataLT2( p, tol);
             x = ref2mesh (xir, N, [x_l x_r]);
@@ -97,6 +97,71 @@ classdef xUnit_fem1d < matlab.unittest.TestCase
             testCase.verifyLessThan( e, tol );
         end
 
+        function test_fem1d_L2F(testCase)
+            x_l = -5;
+            x_r =  5;
+            N   =  40;
+
+            fun = @(x) exp(-(1+1i)*x.^2/2);
+            tol = 1e-9;
+
+            for p=2:12
+                [xi, quadW] = mxLGLdataLT1( p, tol);
+
+                FM = mxLGLdataFM(p, xi);
+                IM = mxLGLdataIM(p, xi);
+                x  = ref2mesh(xi, N, [x_l x_r]);
+
+                u = fun(x);      
+                U1 = mxfem1d_FLT( N, FM, u);
+                vb = mxfem1d_L2F(p, U1);
+                U2 = mxfem1d_F2L(p, vb);
+                
+                e = norm(U2-U1)/norm(U1);
+                testCase.verifyLessThan( e, tol );
+                disp(e)
+            end
+
+        end
+        function test_fem1d_sparse_GMM(testCase)
+            x_l = -5;
+            x_r =  5;
+            N   =  600;
+            p   =  4;
+            nr_LGL = 2*p+1;
+            P = nr_LGL-1;
+
+            fun = @(x) exp(-(1+1i)*x.^2/2);
+            pot = @(x) 1+1i*(x);
+            tol = 1e-9;
+
+            [xi, quadW] = mxLGLdataLT1( P, tol);
+
+            FM = mxLGLdataFM(p, xi);
+            IM = mxLGLdataIM(p, xi);
+            Q  = mxfem1d_quadM(quadW, IM);
+            x  = ref2mesh (xi, N, [x_l x_r]);
+
+            % u -> a column vector
+            u = fun(x);      
+            U = mxfem1d_FLT( N, FM, u);
+            vb = mxfem1d_L2F(p, U);
+
+            phi = pot(x);
+            M = mxfem1d_sparse_GMM(p, Q, phi);
+
+            u1 = u.*phi;
+            U1 = mxfem1d_FLT( N, FM, u1);
+            Pvb = mxfem1d_PrjL2F(p, U1);
+
+            sM = M + transpose(M) - diag(diag(M));
+            Pvb1 = sM*vb;
+            disp(sM)
+            e = norm(Pvb-Pvb1)/norm(Pvb);
+            testCase.verifyLessThan( e, tol );
+            disp(e)
+        end
+
         function test_GP_ABC1a_CQ(testCase)
             I = sqrt(-1);
             tol = 1e-9; % tolerance for LGL points
@@ -116,14 +181,14 @@ classdef xUnit_fem1d < matlab.unittest.TestCase
 
             dt  =  0.5e-3;
             r   =  2/dt;
-            Nt  =  100+1;
+            Nt  =  2000+1;
             x_r =  10;
             x_l = -10;
             x   =  ref2mesh(xr,N,[x_l x_r]);
             
             a0  =  1;
             eta =  1;
-            c   =  0;
+            c   =  15;
             chi =  2;
             KL  =  c/2;
             KR  =  KL;

@@ -145,7 +145,7 @@ classdef GP_EQUATIONS
 
             GM_(1,1)     =   GM_(1,1)+r1o2*ph;
             GM_(N+1,N+1) =   GM_(N+1,N+1)+r1o2*ph;
-            spy(GM_);
+            % spy(GM_);
             %%
             KL2 = KL*KL;
             KR2 = KR*KR;
@@ -266,7 +266,7 @@ classdef GP_EQUATIONS
                 U           =   mxfem1d_FLT( N, FM, u);
                 norm_ana    =   mxfem1d_Norm2( p, N, U);
                 eABC1(j)    =   mxfem1d_Norm2( p, N, E-U)/norm_ana;
-                disp(eABC1(j))
+                %disp(eABC1(j))
             end
             out = eABC1;
         end
