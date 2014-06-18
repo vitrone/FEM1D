@@ -346,8 +346,8 @@ int main(void)
     {
         //{ "Constant potential evolve", test_pde1d_LSE_solve_IVP_evol},
         //{ "Harmonic potential evolve", test_pde1d_LSE_solve_IVP_evol2},
-        //{ "Linear time-dependent potential evolve", test_pde1d_LSE_solve_IVP_evol3},
-        { "Constant potential error" , test_pde1d_LSE_solve_IVP_error},
+        { "Linear time-dependent potential evolve", test_pde1d_LSE_solve_IVP_evol3},
+        //{ "Constant potential error" , test_pde1d_LSE_solve_IVP_error},
         { "Linear time-dependent potential error" , test_pde1d_LSE_solve_IVP_error3},
         CU_TEST_INFO_NULL,
     };

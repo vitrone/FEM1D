@@ -8,6 +8,7 @@ tc = xUnit_fem1d
 %run(tc, 'test_norm')
 %run(tc, 'test2_norm')
 run(tc, 'test_GP_ABC1a_CQ')
+run(tc, 'test_GP_ABC1a_Pade')
 %run(tc, 'test_fem1d_L2F')
 %run(tc, 'test_fem1d_sparse_GMM')
 

@@ -117,7 +117,7 @@ classdef GP_EQUATIONS
             UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
 
             %% stiffness matrix
-            [row1 col1 gsm nnz1_] = fem1d_crgsm( p, N);
+            [row1, col1, gsm, nnz1_] = fem1d_crgsm( p, N);
             GSM = sparse(row1, col1, gsm, N*p+1, N*p+1, nnz1_);
             %%
             GPMM = -J*(UGPMM+LGPMM); 
@@ -377,22 +377,20 @@ classdef GP_EQUATIONS
             rm1o2        =   (b0+sum(bm1o2.*Gm1o2)/r);
             bGm1o2       =   2*bm1o2.*Gm1o2/r;
             %%
-            superM = fem1d_superM( p, P, IMi, quadWi);
+            Q = mxfem1d_quadM( quadWi, IMi);
             %phi = @(x) 1+x.^2;
             x1 = ref2mesh (xri, N, [x_l x_r]);
             % mass matrix
             pot = ones(size(x1));
-            [row col nnz_] = fem1d_crgmmind( p, N);
-            [ugmm lgmm] = fem1d_gmm( p, N, P, pot, superM, nnz_);
-            UGMM = sparse( row, col, ugmm, N*p+1, N*p+1, nnz_);
-            LGMM = sparse( col, row, lgmm, N*p+1, N*p+1, nnz_);
+            LGMM = mxfem1d_sparse_GMM( p, Q, pot);
+            UGMM = transpose(LGMM) - diag(diag(LGMM));
+
             phi = @(x) x;
             pot = (phi(x1));
             VL = pot(1);
             VR = pot(end);
-            [ugpmm lgpmm] = fem1d_gmm( p, N, P, pot, superM, nnz_);
-            UGPMM = sparse( row, col, ugpmm, N*p+1, N*p+1, nnz_);
-            LGPMM = sparse( col, row, lgpmm, N*p+1, N*p+1, nnz_);
+            LGPMM = mxfem1d_sparse_GMM( p, Q, pot);
+            UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
 
             %% stiffness matrix
             [row1 col1 gsm nnz1_] = fem1d_crgsm( p, N);
@@ -402,7 +400,7 @@ classdef GP_EQUATIONS
             GM_ = GSM/J+(-I*r*J)*(UGMM+LGMM);
             %%
             u0  =   profile(x,0);
-            U   = fem_flt( p, N, p, FM, u0);
+            U   = mxfem1d_FLT( N, FM, u0);
             X   = zeros(p*N+1,1);
             Y   = zeros((p+1)*N,1);
             E = U;
@@ -454,8 +452,8 @@ classdef GP_EQUATIONS
             TwoGm1o2m1 = (2*Gm1o2-1);
 
             for j=2:Nt,
-                [Pv Pb] =   prjlp2fem( p, N, E);
-                F       =   -I*r*J*[Pv;Pb];
+                Pvb = mxfem1d_PrjL2F( p, E);
+                F   = -I*r*J*Pvb;
                 % Left:  u_x-i^(-1/2)*r1o2*u=BL
                 % right: u_x+i^(-1/2)*r1o2*u=BR
                 
@@ -497,19 +495,19 @@ classdef GP_EQUATIONS
                     mBL     =   BL+(I*KLAL+I*AL*tmpdXi-phr1o2AL)*EXiLEKL2t;
                     mBR     =   BR+(I*KRAR+I*AR*tmpdXi+phr1o2AR)*EXiREKR2t;
                     
-                    tmpu    =   fem_ilt( p, N, P, IMi, Y);
+                    tmpu    =   mxfem1d_ILT( N, IMi, Y);
                     tmpNL   =   chi*(tmpu.^2).*conj(tmpu);
-                    tmp     =   fem_flt(p, N, P, FMi, tmpNL);
+                    tmp     =   mxfem1d_FLT(N, FMi, tmpNL);
                     
-                    [Pv Pb] =   prjlp2fem( p, N, tmp);
-                    tmpF    =   [Pv;Pb]*J+F;
+                    Pvb     =   mxfem1d_PrjL2F( p, tmp);
+                    tmpF    =   Pvb*J+F;
                     tmpF(1)     =   tmpF(1)-mBL;
                     tmpF(N+1)   =   tmpF(N+1)+mBR;
                     
                     X       =   GM\tmpF;
                     
-                    tmpX    =   fem2lp( p, N, X(1:N+1), X(N+2:end));
-                    Res     =   sqrt(J)*femlp_norm2( p, N, Y-tmpX);
+                    tmpX    =   mxfem1d_F2L( p, X);
+                    Res     =   sqrt(J)*mxfem1d_Norm2( p, N, Y-tmpX);
                     it = it+1;
                     if Res>=tol && it==Nth,
                         error (['Threshold iteration reached at (j=' num2str(j) ') with Res =' num2str(Res) '.']);
@@ -539,9 +537,9 @@ classdef GP_EQUATIONS
                 VPhi.m1o2R  =   TwoGm1o2m1.*VPhi.m1o2R+bGm1o2*PsiR;
                 
                 u           =   profile(x,(j-1)*dt);
-                U           =   fem_flt( p, N, p, FM, u);
-                norm_ana    =   femlp_norm2( p, N, U);
-                eABC1(j)    =   femlp_norm2( p, N, E-U)/norm_ana;
+                U           =   mxfem1d_FLT( N, FM, u);
+                norm_ana    =   mxfem1d_Norm2( p, N, U);
+                eABC1(j)    =   mxfem1d_Norm2( p, N, E-U)/norm_ana;
             end
             out = eABC1;
         end
