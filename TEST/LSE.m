@@ -1,48 +1,813 @@
 classdef LSE
-    
-    properties(Constant)
+   
+% Solving Linear Schroedinger equation using FEM
+%   iu_t + u_xx + phi(x)u + V(t)xu = 0.
+%
+% Boundary Conditions:
+%   Natural boundary condition
+%   Transparent Boundary conditons
+% This classes uses another class of objects LSE_WP which defined 
+% wave-packet solutions (WP) for the LSE considered above.
+% See LSE_WP
+%
+% Properties
+%   |--tol             : Tolerance
+%   |--p               : Highest degree of the legendre polynomial
+%   |--P               : Polynomial degree for quadrature 
+%   |--N               : Number of finite-elements
+%   |--Nt              : Number of time-steps
+%   |--t               : 1-by-Nt vector storing time-grid points
+%   |--x               : Space grid
+%   |--dt              : Size of the time-step
+%   |--domain          : Computational dimain [x_l, x_r]
+%   |--xpotential      : Static potential
+%   |--lin_tpotential  : Struct, time-dependent potential 
+%   |--E               : Field in Legendre basis
+%   |--eTBC            : Error
+%   |--soln_name       
+%   |--soln_params
+%   |--WP_data
+%
+% EXAMPLE:
+%    tol = 1e-9; % tolerance for LGL points
+%    N   = 400;  % Number of finite elements
+%    p   = 4;    % highest degree of polynomials
+%    
+%    dt  =  0.5e-3;
+%    Nt  =  4000;
+%    obj = LSE(p, N, dt, Nt, tol);
+%    
+%    obj.domain = [-10, 10];
+%    t0    = 1;
+%    sigma = 1/8;
+%    tpotential = struct( 'g_0'            , 1,...
+%                         'mup'            , 2*pi,...
+%                         't_0'            , t0,...
+%                         'sigma'          , sigma,... 
+%                         'potential_name' , 'GAUSSIAN',...
+%                         'T_supp'         , t0 + 8*sigma);
+%
+%    obj.lin_tpotential = tpotential;
+%    obj = obj.init_solver();
+%    soln_params = struct( 'A0', 1,...
+%                          'c' , 8,...
+%                          'a' , 1);
+%    
+%    options = struct('BC_type'     , 'TBC_CQ',...
+%                     'mode'        , 'ERROR',...
+%                     'soln_name'   , 'Gaussian_WP',...
+%                     'soln_params' , soln_params);
+%    obj = obj.solve(options);
+%    logerr_plot(obj.t, obj.eTBC)
+
+    properties(SetAccess=private)
+        tol = 1e-9;
+        p
+        P
+        N
+        Nt
+        t
+        x
+        dt
+    end
+    properties
+        domain         % computational domain: [x_l, x_r]
+        xpotential     % Static potential
+        lin_tpotential % time-dependent linear potential
+        E              % Field in Legendre basis
+        E_ana          % Field in Legendre basis, analytical
+        eTBC           % L2 norm of error
+        soln_name      % name of the analytical solution
+        soln_params    % parameters 
+        WP_data
+    end
+    properties(SetAccess = private, GetAccess = private)
+        u0
+        dx
+        J   % Jacobian of transformation
+        r
+        sw % defines the strip width  
+        % xr   : LGL points
+        % quadW: Quadrature weights for LGL points
+        % FM   : matrix for forward transform
+        % IM   : matrix for inverse transform
+        LGLdata
+        % xri   : LGL points
+        % quadWi: Quadrature weights for LGL points
+        % FMi   : matrix for forward transform
+        % IMi   : matrix for inverse transform
+        LGLdataQ
+        x1
+        GM
+        GPMM
+        phi
+        V
+
+        nr_fem
+        nr_lgl
+
+        tbeta
+        tnu
+        tB
+    end
+
+    properties(Constant, SetAccess = private, GetAccess = private)
         CQ_M0 = 20;
+        stol = 1e-4;
     
     end
 
+    methods
+        function obj = LSE(p, N, dt, Nt, tol)
+            obj.p = p;
+            obj.N = N;
+            obj.tol = tol;
+            [obj.LGLdata.xr, obj.LGLdata.quadW, obj.LGLdata.IM, obj.LGLdata.FM] ...
+                                                            = mxLGLdataLT2( p, tol);
+            % xr: LGL points
+            % FM: matrix for forward transform
+            % IM: matrix for inverse transform
 
-    methods (Static)
-        
-        function wh = quadW_CQ_BDF1(N, dx, dt, tol )
-            if(N<LSE.CQ_M0)
-                N = LSE.CQ_M0;
-            end
-            F  = @(s) exp(-dx*sqrt(-1i*(s))).*sqrt(-1i*s);
-            sh = @(zeta, dt) (1/dt)*(1-zeta);
+            obj.P = 2*p; % For the purpose of numerical integration
+            % Degree of the Legendre polynomials involved --> P
+            [obj.LGLdataQ.xri, obj.LGLdataQ.quadWi] = mxLGLdataLT1( obj.P, tol);
+            obj.LGLdataQ.FMi = mxLGLdataFM( p, obj.LGLdataQ.xri);
+            obj.LGLdataQ.IMi = mxLGLdataIM( p, obj.LGLdataQ.xri);
             
-            n    = (0:N-1);
-            rho  = (tol)^(0.5/N);
-            zeta = rho*exp(1i*2*pi*n/N);
-            Sh   = sh(zeta, dt);
-            
-            F_val = F(Sh);
-            % Quadrature weights
-            wh = (rho.^(-n)).*fft(F_val)/N;
+            obj.dt = dt;
+            obj.Nt = Nt;
+            obj.t  = ((0:Nt-1)*dt);
         end
 
-        function wh = quadW_CQ_BDF2(N, dx, dt, tol )
-            if(N<LSE.CQ_M0)
-                N = LSE.CQ_M0;
-            end
-            F  = @(s) exp(-dx*sqrt(-1i*(s))).*sqrt(-1i*s);
-            sh = @(zeta, dt) (1/dt)*(3/2-2*zeta+zeta.^2/2);
-            
-            n    = (0:N-1);
-            rho  = (tol)^(0.5/N);
-            zeta = rho*exp(1i*2*pi*n/N);
-            Sh   = sh(zeta, dt);
-            
-            F_val = F(Sh);
-            % Quadrature weights
-            wh = (rho.^(-n)).*fft(F_val)/N;
+        function obj = set.domain(obj, domain)
+            obj.domain = domain;
+            obj.x   = ref2mesh(obj.LGLdata.xr  , obj.N, domain);
+            obj.x1  = ref2mesh(obj.LGLdataQ.xri, obj.N, domain);
+            obj.phi = [];
+            obj.dx  = (obj.domain(2)-obj.domain(1))/obj.N;
+            obj.J   = obj.dx/2;
+            obj.r   = 2/obj.dt;
         end
 
-        % Trapezoidal rule
+        function obj = set.lin_tpotential(obj, tpotential)
+        % Define the laser field
+        % USER_DEFINED - require function handle 
+        % CONSTANT     - constant potential
+        % Gaussian     - Gaussian pulse, finite support
+        % CW           - Continuous Wave
+
+            obj.lin_tpotential = tpotential;
+            switch(tpotential.potential_name)
+                case{'USER_DEFINED'}
+                    obj.V = tpotential.func(obj.t);
+                case{'CONSTANT'}
+                    obj.V = ones(1, obj.Nt);
+                case{'CW'}
+                    obj.V = LSE.tpotential_CW(obj.t, tpotential);
+                case{'GAUSSIAN'}
+                    obj.V = LSE.tpotential_Gaussian(obj.t, tpotential);
+                otherwise
+                    error('Unknown potential')
+            end
+
+            %obj.WP_data = LSE_WP(obj.dt, obj.Nt, params);
+            if isinf(tpotential.T_supp)
+                [obj.tnu, obj.tbeta, obj.tB] = LSE.auxilary_func( obj.dt,...
+                                                                  obj.V);
+            else
+                [obj.tnu, obj.tbeta, obj.tB] = LSE.auxilary_func( obj.dt,...
+                                                                  obj.V,...
+                                                                  tpotential.T_supp);
+            end
+
+            K2 =  max(0, max(obj.tnu)) + 1.03;
+            K1 = -min(0, min(obj.tnu)) + 1.03;
+            obj.sw = [K2, K1];
+        end
+
+        function obj = set.xpotential(obj, xpotential)
+            obj.xpotential = xpotential;
+            obj.phi = xpotential(obj.x1);
+        end
+
+        function obj = init_solver(obj)
+        % Initialize the solver 
+
+            Q = mxfem1d_quadM( obj.LGLdataQ.quadWi, obj.LGLdataQ.IMi);
+            pot = ones(size(obj.x1));
+            % mass matrix
+            LGMM = mxfem1d_sparse_GMM( obj.p, Q, pot);
+            UGMM = transpose(LGMM) - diag(diag(LGMM));
+            
+            %% stiffness matrix
+            [row1, col1, gsm, nnz1_] = fem1d_crgsm( obj.p, obj.N);
+            GSM = sparse(row1, col1, gsm, obj.N*obj.p+1, obj.N*obj.p+1, nnz1_);
+
+            LGPMM = mxfem1d_sparse_GMM( obj.p, Q, obj.x1);
+            UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
+            obj.GPMM = -obj.J*(UGPMM+LGPMM);  
+
+            if ~isempty(obj.phi)
+                LGPMM = mxfem1d_sparse_GMM( obj.p, Q, obj.phi);
+                UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
+                GPMMs  = -obj.J*(UGPMM+LGPMM); 
+                obj.GM = GSM/obj.J + (-1i*obj.r*obj.J)*(UGMM+LGMM) + GPMMs;
+            else
+                obj.GM = GSM/obj.J + (-1i*obj.r*obj.J)*(UGMM+LGMM);
+            end
+            %%
+            obj.nr_fem = obj.p*obj.N + 1;
+            obj.nr_lgl = (obj.p + 1)*obj.N;
+        end
+
+        function obj = solve(obj, options)
+            % xx
+            % 11: EVOLVE, NATURAL
+            % 21: ERROR , NATURAL
+            % 12: EVOLVE, TBC_CQ
+            % 22: ERROR , TBC_CQ
+            action_code = 00; 
+
+            switch(options.BC_type)
+                case{'NATURAL'}
+                    action_code = action_code + 1;
+                case{'TBC_CQ'}
+                    action_code = action_code + 2;
+                otherwise
+                    error('Boundary condition type is unspecified!')
+            end
+            switch(options.mode)
+                case{'EVOLVE'}
+                    action_code = action_code + 10;
+                    obj.u0 = options.u0;
+                case{'ERROR'}
+                    action_code = action_code + 20;
+                    if(isinf(obj.lin_tpotential.T_supp))
+                        obj.WP_data = LSE_WP( obj.dt,...
+                                              obj.Nt,...
+                                              obj.lin_tpotential,...
+                                              obj.V);
+                    else
+                        obj.WP_data = LSE_WP( obj.dt,...
+                                              obj.Nt,...
+                                              obj.lin_tpotential);
+                    end
+                    obj.soln_name   = options.soln_name;
+                    obj.soln_params = options.soln_params;
+                case{'EVOLVE_ERROR'}
+                    action_code = action_code + 30;
+                    if(isinf(obj.lin_tpotential.T_supp))
+                        obj.WP_data = LSE_WP( obj.dt,...
+                                              obj.Nt,...
+                                              obj.lin_tpotential,...
+                                              obj.V);
+                    else
+                        obj.WP_data = LSE_WP( obj.dt,...
+                                              obj.Nt,...
+                                              obj.lin_tpotential);
+                    end
+                    obj.soln_name   = options.soln_name;
+                    obj.soln_params = options.soln_params;
+                otherwise
+                    error('Solver mode is unspecified!')
+            end
+            switch(action_code)
+                case{11}
+                    obj = obj.Natural_evolve();
+                case{21}
+                    obj = obj.Natural_error();
+                case{12}
+                    obj = obj.TBC_CQ_evolve();
+                case{22}
+                    obj = obj.TBC_CQ_error();
+                case{32}
+                    obj = obj.TBC_CQ_evolve_error();
+            end
+        end
+
+        function plot_error(obj)
+            if ~isempty(obj.eTBC)
+                logerr_plot(obj.t, obj.eTBC)
+            end
+        end
+
+    end
+    
+    methods(Access = private)
+
+        function obj = Natural_evolve(obj)
+            % Solving Linear Schroedinger equation using FEM
+            % iu_t+u_xx+V(t)xu=0
+            % Natural boundary condition
+            % Argument structure is 
+            %
+            % out ---> N x Nt matrix containing Legendre transform of the solution on 
+            % the FEM grid.
+            %
+
+            U  = mxfem1d_FLT( obj.N, obj.LGLdata.FM, obj.u0);
+            X  = zeros(obj.nr_fem, 1);
+            Y  = zeros(obj.nr_lgl, 1);
+
+            obj.E = zeros(obj.nr_lgl, obj.Nt);
+            obj.E(:, 1) = U;
+
+            for j=2:obj.Nt,
+
+                tmpV = 0.5*(obj.V(j-1) + obj.V(j));
+                GM1 = obj.GPMM*tmpV + obj.GM;
+
+                Pvb = mxfem1d_PrjL2F( obj.p, obj.E(:, j-1));
+                F   = -1i*obj.r*obj.J*Pvb;
+
+                X = GM1\F;
+                Y = mxfem1d_F2L( obj.p, X);
+                obj.E(:, j)  = 2*Y-obj.E(:, j-1);
+            end
+        end
+
+        function obj = Natural_error(obj)
+            % Solving Linear Schroedinger equation using FEM
+            % iu_t+u_xx+V(t)xu=0
+            % Natural boundary condition
+
+            u = obj.WP_data.(obj.soln_name)(obj.x, 1, obj.soln_params);
+            U = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+            X = zeros(obj.nr_fem, 1);
+            Y = zeros(obj.nr_lgl, 1);
+
+            E = zeros(obj.nr_lgl, 1);
+            E(:,1) = U;
+            obj.eTBC = zeros(1, obj.Nt);
+            norm0 = mxfem1d_Norm2( obj.p, obj.N, U);
+            for j=2:obj.Nt,
+
+                tmpV = 0.5*(obj.V(j-1) + obj.V(j));
+                GM1 = obj.GPMM*tmpV + obj.GM;
+
+                Pvb = mxfem1d_PrjL2F( obj.p, E);
+                F   = -1i*obj.r*obj.J*Pvb;
+
+                X = GM1\F;
+                Y = mxfem1d_F2L( obj.p, X);
+                E  = 2*Y-E;
+
+                u = obj.WP_data.(obj.soln_name)(obj.x, j, obj.soln_params);
+                U = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+                obj.eTBC(j) = mxfem1d_Norm2( obj.p, obj.N, E-U)/norm0;
+            end
+        end
+
+        function obj = TBC_CQ_evolve(obj)
+            dx_l    = obj.sw(1);
+            dx_r    = obj.sw(2);
+
+            % verify support of the initial data
+            supp = LSE.find_support(obj.x, obj.u0, obj.stol);
+            if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+                fprintf( 'Support of the initial data: [%0.5f, %0.5f]\n',...
+                          supp(1), supp(2));
+                error('Computational domain is inadmissible!')
+            end
+            if~isempty(obj.phi)
+                supp = LSE.find_support(obj.x1, obj.phi, obj.stol);
+                if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+                    fprintf( 'Support of the static potential: [%0.5f, %0.5f]\n',...
+                              supp(1), supp(2));
+                    error('Computational domain is inadmissible!')
+                end
+            end
+            U  = mxfem1d_FLT( obj.N, obj.LGLdata.FM, obj.u0);
+            X  = zeros(obj.nr_fem, 1);
+            Y  = zeros(obj.nr_lgl, 1);
+
+            obj.E = zeros(obj.nr_lgl, obj.Nt);
+            obj.E(:,1) = U;
+
+            xl  = obj.domain(1) + dx_l - obj.tnu;
+            xr  = obj.domain(2) - dx_r - obj.tnu;
+
+            yL = [0];
+            yR = [0];
+
+            SL = 0;
+            SR = 0;
+
+            
+            whl0_old = 0;
+            whr0_old = 0;
+
+            SR_old  = 0;
+            SL_old  = 0;
+            for j=2:obj.Nt,
+
+                nu_tmp   = 0.5*(obj.tnu(j)   + obj.tnu(j-1));
+                beta_tmp = 0.5*(obj.tbeta(j) + obj.tbeta(j-1));
+                B_tmp    = 0.5*(obj.tB(j)    + obj.tB(j-1));
+
+                whl = LSE.quadW_CQ(j, dx_l - obj.tnu(j), obj.dt, obj.tol);
+                whr = LSE.quadW_CQ(j, dx_r + obj.tnu(j), obj.dt, obj.tol);
+
+                tmpV = 0.5*(obj.V(j-1) + obj.V(j));
+                GM1 = obj.GPMM*tmpV + obj.GM;
+
+                xl_tmp  = 0.5*(xl(j) + xl(j-1));
+                xr_tmp  = 0.5*(xr(j) + xr(j-1));
+
+                [nx_l, xi_l] = LSE.fem_index(obj.N, obj.domain, xl_tmp);
+                [nx_r, xi_r] = LSE.fem_index(obj.N, obj.domain, xr_tmp);
+
+                IMb_l = mxLGLdataIM( obj.p, xi_l);
+                IMb_r = mxLGLdataIM( obj.p, xi_r);
+                 
+                whl0_new = whl(1)*exp(1i*obj.tbeta(j)*( -dx_l + obj.tnu(j)));
+                whr0_new = whr(1)*exp(1i*obj.tbeta(j)*(  dx_r + obj.tnu(j)));
+
+                IMvb_l = 0.5*(whl0_new+whl0_old)*LSE.Lobatto(IMb_l);
+                IMvb_r = 0.5*(whr0_new+whr0_old)*LSE.Lobatto(IMb_r);
+
+                GM1(1, 1)      = GM1(1, 1)  + 1i*beta_tmp;
+                GM1(1, nx_l+1) = GM1(1, nx_l+1) + IMvb_l(1);
+                GM1(1, nx_l+2) = GM1(1, nx_l+2) + IMvb_l(2);
+                
+                shift = obj.N+1 + nx_l*(obj.p-2);
+
+                for k=3:obj.p+1
+                    GM1(1, shift+k) = GM1( 1, shift+k) + ...
+                                           IMvb_l(k);
+                end
+
+                GM1(obj.N+1, obj.N+1) = GM1(obj.N+1, obj.N+1)  - 1i*beta_tmp;
+                GM1(obj.N+1, nx_r+1)  = GM1(obj.N+1, nx_r+1) + IMvb_r(1);
+                GM1(obj.N+1, nx_r+2)  = GM1(obj.N+1, nx_r+2) + IMvb_r(2);
+                
+                shift = obj.N + 1 + nx_r*(obj.p-2);
+                
+                for k=3:obj.p+1
+                    GM1(obj.N+1, shift+k) = GM1( obj.N+1, shift+k) + ...
+                                             IMvb_r(k);
+                end
+
+                Pvb = mxfem1d_PrjL2F( obj.p, obj.E(:, j-1));
+                F   = -1i*obj.r*obj.J*Pvb;
+
+
+                whl_tmp = fliplr(whl((2:j)));
+                whr_tmp = fliplr(whr((2:j)));
+
+                Xi1_l = obj.tbeta(j)*xl(j)         - obj.tB(j); 
+                Xi_l  = obj.tbeta(j)*obj.domain(1) - obj.tB(j); 
+
+                Xi1_r = obj.tbeta(j)*xr(j)         - obj.tB(j); 
+                Xi_r  = obj.tbeta(j)*obj.domain(2) - obj.tB(j); 
+
+                SL_new = exp(1i*Xi_l)*sum(whl_tmp.*yL);
+                SR_new = exp(1i*Xi_r)*sum(whr_tmp.*yR);
+
+
+                tmpF = F;
+                tmpF(1)       = F(1)       - 0.5*(SL_new + SL_old);
+                tmpF(obj.N+1) = F(obj.N+1) - 0.5*(SR_new + SR_old);
+
+                X = GM1\tmpF;
+                Y = mxfem1d_F2L( obj.p, X);
+                obj.E(:, j) = 2*Y-obj.E(:, j-1);
+
+                indl = (nx_l)*(obj.p+1)+1:(nx_l)*(obj.p+1)+obj.p+1;
+                indr = (nx_r)*(obj.p+1)+1:(nx_r)*(obj.p+1)+obj.p+1;
+                yL(1, j) = exp(-1i*Xi1_l)*IMb_l*obj.E(indl,j);
+                yR(1, j) = exp(-1i*Xi1_r)*IMb_r*obj.E(indr,j);
+                
+                SR_old = SR_new;
+                SL_old = SL_new;
+                
+                whl0_old = whl0_new;
+                whr0_old = whr0_new;
+            end
+        end
+
+
+        function obj = TBC_CQ_evolve_error(obj)
+            dx_l    = obj.sw(1);
+            dx_r    = obj.sw(2);
+
+            % verify support of the initial data
+            u = obj.WP_data.(obj.soln_name)(obj.x, 1, obj.soln_params);
+
+            supp = LSE.find_support(obj.x, u, obj.stol);
+            
+            if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+                fprintf( 'Support of the initial data: [%0.5f, %0.5f]\n',...
+                          supp(1), supp(2));
+                error('Computational domain is inadmissible!')
+            end
+            if~isempty(obj.phi)
+                supp = LSE.find_support(obj.x1, obj.phi, obj.stol);
+                if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+                    fprintf( 'Support of the static potential: [%0.5f, %0.5f]\n',...
+                              supp(1), supp(2));
+                    error('Computational domain is inadmissible!')
+                end
+            end
+            U  = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+            X  = zeros(obj.nr_fem, 1);
+            Y  = zeros(obj.nr_lgl, 1);
+
+            obj.E     = zeros(obj.nr_lgl, obj.Nt);
+            obj.E_ana = zeros(obj.nr_lgl, obj.Nt);
+            obj.E(:, 1)     = U;
+            obj.E_ana(:, 1) = U;
+
+            obj.eTBC = zeros(1, obj.Nt);
+            norm0 = mxfem1d_Norm2( obj.p, obj.N, U);
+
+            xl  = obj.domain(1) + dx_l - obj.tnu;
+            xr  = obj.domain(2) - dx_r - obj.tnu;
+
+            yL = [0];
+            yR = [0];
+
+            SL = 0;
+            SR = 0;
+
+            
+            whl0_old = 0;
+            whr0_old = 0;
+
+            SR_old  = 0;
+            SL_old  = 0;
+            for j=2:obj.Nt,
+
+                nu_tmp   = 0.5*(obj.tnu(j)   + obj.tnu(j-1));
+                beta_tmp = 0.5*(obj.tbeta(j) + obj.tbeta(j-1));
+                B_tmp    = 0.5*(obj.tB(j)    + obj.tB(j-1));
+
+                whl = LSE.quadW_CQ(j, dx_l - obj.tnu(j), obj.dt, obj.tol);
+                whr = LSE.quadW_CQ(j, dx_r + obj.tnu(j), obj.dt, obj.tol);
+
+                tmpV = 0.5*(obj.V(j-1) + obj.V(j));
+                GM1 = obj.GPMM*tmpV + obj.GM;
+
+                xl_tmp  = 0.5*(xl(j) + xl(j-1));
+                xr_tmp  = 0.5*(xr(j) + xr(j-1));
+
+                [nx_l, xi_l] = LSE.fem_index(obj.N, obj.domain, xl_tmp);
+                [nx_r, xi_r] = LSE.fem_index(obj.N, obj.domain, xr_tmp);
+
+                IMb_l = mxLGLdataIM( obj.p, xi_l);
+                IMb_r = mxLGLdataIM( obj.p, xi_r);
+                 
+                whl0_new = whl(1)*exp(1i*obj.tbeta(j)*( -dx_l + obj.tnu(j)));
+                whr0_new = whr(1)*exp(1i*obj.tbeta(j)*(  dx_r + obj.tnu(j)));
+
+                IMvb_l = 0.5*(whl0_new+whl0_old)*LSE.Lobatto(IMb_l);
+                IMvb_r = 0.5*(whr0_new+whr0_old)*LSE.Lobatto(IMb_r);
+
+                GM1(1, 1)      = GM1(1, 1)  + 1i*beta_tmp;
+                GM1(1, nx_l+1) = GM1(1, nx_l+1) + IMvb_l(1);
+                GM1(1, nx_l+2) = GM1(1, nx_l+2) + IMvb_l(2);
+                
+                shift = obj.N+1 + nx_l*(obj.p-2);
+
+                for k=3:obj.p+1
+                    GM1(1, shift+k) = GM1( 1, shift+k) + ...
+                                           IMvb_l(k);
+                end
+
+                GM1(obj.N+1, obj.N+1) = GM1(obj.N+1, obj.N+1)  - 1i*beta_tmp;
+                GM1(obj.N+1, nx_r+1)  = GM1(obj.N+1, nx_r+1) + IMvb_r(1);
+                GM1(obj.N+1, nx_r+2)  = GM1(obj.N+1, nx_r+2) + IMvb_r(2);
+                
+                shift = obj.N + 1 + nx_r*(obj.p-2);
+                
+                for k=3:obj.p+1
+                    GM1(obj.N+1, shift+k) = GM1( obj.N+1, shift+k) + ...
+                                             IMvb_r(k);
+                end
+
+                Pvb = mxfem1d_PrjL2F( obj.p, obj.E(:, j-1));
+                F   = -1i*obj.r*obj.J*Pvb;
+
+
+                whl_tmp = fliplr(whl((2:j)));
+                whr_tmp = fliplr(whr((2:j)));
+
+                Xi1_l = obj.tbeta(j)*xl(j)         - obj.tB(j); 
+                Xi_l  = obj.tbeta(j)*obj.domain(1) - obj.tB(j); 
+
+                Xi1_r = obj.tbeta(j)*xr(j)         - obj.tB(j); 
+                Xi_r  = obj.tbeta(j)*obj.domain(2) - obj.tB(j); 
+
+                SL_new = exp(1i*Xi_l)*sum(whl_tmp.*yL);
+                SR_new = exp(1i*Xi_r)*sum(whr_tmp.*yR);
+
+
+                tmpF = F;
+                tmpF(1)       = F(1)       - 0.5*(SL_new + SL_old);
+                tmpF(obj.N+1) = F(obj.N+1) - 0.5*(SR_new + SR_old);
+
+                X = GM1\tmpF;
+                Y = mxfem1d_F2L( obj.p, X);
+                obj.E(:, j) = 2*Y-obj.E(:, j-1);
+
+                indl = (nx_l)*(obj.p+1)+1:(nx_l)*(obj.p+1)+obj.p+1;
+                indr = (nx_r)*(obj.p+1)+1:(nx_r)*(obj.p+1)+obj.p+1;
+                yL(1, j) = exp(-1i*Xi1_l)*IMb_l*obj.E(indl,j);
+                yR(1, j) = exp(-1i*Xi1_r)*IMb_r*obj.E(indr,j);
+                
+                SR_old = SR_new;
+                SL_old = SL_new;
+                
+                whl0_old = whl0_new;
+                whr0_old = whr0_new;
+
+                u = obj.WP_data.(obj.soln_name)(obj.x, j, obj.soln_params);
+                obj.E_ana(:, j) = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+
+                obj.eTBC(j) = mxfem1d_Norm2( obj.p, obj.N,...
+                                             obj.E(:,j)-obj.E_ana(:, j))/norm0;
+            end
+        end
+
+
+        function obj = TBC_CQ_error(obj)
+            dx_l    = obj.sw(1);
+            dx_r    = obj.sw(2);
+
+            % verify support of the initial data
+            u = obj.WP_data.(obj.soln_name)(obj.x, 1, obj.soln_params);
+            
+            supp = LSE.find_support(obj.x, u, obj.stol);
+
+            if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+
+                fprintf( 'Support of the initial data: [%0.5f, %0.5f]\n',...
+                          supp(1), supp(2));
+                
+                error('Computational domain is inadmissible!')
+            end
+            if~isempty(obj.phi)
+                supp = LSE.find_support(obj.x1, obj.phi, obj.stol);
+                if ((obj.domain(1)>supp(1)-dx_l) || (obj.domain(2)<supp(2)+dx_r))
+                    fprintf( 'Support of the static potential: [%0.5f, %0.5f]\n',...
+                              supp(1), supp(2));
+                    error('Computational domain is inadmissible!')
+                end
+            end
+            U = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+            X = zeros(obj.nr_fem, 1);
+            Y = zeros(obj.nr_lgl, 1);
+
+            E = zeros(obj.nr_lgl, 1);
+            E(:,1) = U;
+            obj.eTBC = zeros(1, obj.Nt);
+            norm0 = mxfem1d_Norm2( obj.p, obj.N, U);
+
+            xl  = obj.domain(1) + dx_l - obj.tnu;
+            xr  = obj.domain(2) - dx_r - obj.tnu;
+
+            yL = [0];
+            yR = [0];
+
+            SL = 0;
+            SR = 0;
+
+            whl0_old = 0;
+            whr0_old = 0;
+
+            SR_old  = 0;
+            SL_old  = 0;
+
+            for j=2:obj.Nt,
+
+                nu_tmp   = 0.5*(obj.tnu(j)   + obj.tnu(j-1));
+                beta_tmp = 0.5*(obj.tbeta(j) + obj.tbeta(j-1));
+                B_tmp    = 0.5*(obj.tB(j)    + obj.tB(j-1));
+
+                whl = LSE.quadW_CQ(j, dx_l - obj.tnu(j), obj.dt, obj.tol);
+                whr = LSE.quadW_CQ(j, dx_r + obj.tnu(j), obj.dt, obj.tol);
+
+                tmpV = 0.5*(obj.V(j-1) + obj.V(j));
+                GM1 = obj.GPMM*tmpV + obj.GM;
+
+                xl_tmp  = 0.5*(xl(j) + xl(j-1));
+                xr_tmp  = 0.5*(xr(j) + xr(j-1));
+
+                [nx_l, xi_l] = LSE.fem_index(obj.N, obj.domain, xl_tmp);
+                [nx_r, xi_r] = LSE.fem_index(obj.N, obj.domain, xr_tmp);
+
+                IMb_l = mxLGLdataIM( obj.p, xi_l);
+                IMb_r = mxLGLdataIM( obj.p, xi_r);
+                 
+                whl0_new = whl(1)*exp(1i*obj.tbeta(j)*( -dx_l + obj.tnu(j)));
+                whr0_new = whr(1)*exp(1i*obj.tbeta(j)*(  dx_r + obj.tnu(j)));
+
+                IMvb_l = 0.5*(whl0_new+whl0_old)*LSE.Lobatto(IMb_l);
+                IMvb_r = 0.5*(whr0_new+whr0_old)*LSE.Lobatto(IMb_r);
+
+                GM1(1, 1)      = GM1(1, 1)  + 1i*beta_tmp;
+                GM1(1, nx_l+1) = GM1(1, nx_l+1) + IMvb_l(1);
+                GM1(1, nx_l+2) = GM1(1, nx_l+2) + IMvb_l(2);
+                
+                shift = obj.N+1 + nx_l*(obj.p-2);
+
+                for k=3:obj.p+1
+                    GM1(1, shift+k) = GM1( 1, shift+k) + ...
+                                           IMvb_l(k);
+                end
+
+                GM1(obj.N+1, obj.N+1) = GM1(obj.N+1, obj.N+1)  - 1i*beta_tmp;
+                GM1(obj.N+1, nx_r+1)  = GM1(obj.N+1, nx_r+1) + IMvb_r(1);
+                GM1(obj.N+1, nx_r+2)  = GM1(obj.N+1, nx_r+2) + IMvb_r(2);
+                
+                shift = obj.N + 1 + nx_r*(obj.p-2);
+                
+                for k=3:obj.p+1
+                    GM1(obj.N+1, shift+k) = GM1( obj.N+1, shift+k) + ...
+                                             IMvb_r(k);
+                end
+
+                Pvb = mxfem1d_PrjL2F( obj.p, E);
+                F   = -1i*obj.r*obj.J*Pvb;
+
+
+                whl_tmp = fliplr(whl((2:j)));
+                whr_tmp = fliplr(whr((2:j)));
+
+                Xi1_l = obj.tbeta(j)*xl(j)         - obj.tB(j); 
+                Xi_l  = obj.tbeta(j)*obj.domain(1) - obj.tB(j); 
+
+                Xi1_r = obj.tbeta(j)*xr(j)         - obj.tB(j); 
+                Xi_r  = obj.tbeta(j)*obj.domain(2) - obj.tB(j); 
+
+                SL_new = exp(1i*Xi_l)*sum(whl_tmp.*yL);
+                SR_new = exp(1i*Xi_r)*sum(whr_tmp.*yR);
+
+
+                tmpF = F;
+                tmpF(1)       = F(1)       - 0.5*(SL_new + SL_old);
+                tmpF(obj.N+1) = F(obj.N+1) - 0.5*(SR_new + SR_old);
+
+                X = GM1\tmpF;
+                Y = mxfem1d_F2L( obj.p, X);
+                E = 2*Y - E;
+
+                indl = (nx_l)*(obj.p+1)+1:(nx_l)*(obj.p+1)+obj.p+1;
+                indr = (nx_r)*(obj.p+1)+1:(nx_r)*(obj.p+1)+obj.p+1;
+                yL(1, j) = exp(-1i*Xi1_l)*IMb_l*E(indl,1);
+                yR(1, j) = exp(-1i*Xi1_r)*IMb_r*E(indr,1);
+                
+                SR_old = SR_new;
+                SL_old = SL_new;
+                
+                whl0_old = whl0_new;
+                whr0_old = whr0_new;
+
+                u = obj.WP_data.(obj.soln_name)(obj.x, j, obj.soln_params);
+                U = mxfem1d_FLT( obj.N, obj.LGLdata.FM, u);
+                obj.eTBC(j) = mxfem1d_Norm2( obj.p, obj.N, E-U)/norm0;
+            end
+        end
+    end
+
+
+    methods (Static=true, Access=private)
+
+        function [tnu, tbeta, tB] = auxilary_func(dt, V, T_supp)
+            % dnu=-2*beta, dbeta = V(t)
+            % nu = -2partial^{-2}V(t)
+            Nt = length(V);
+
+            tbeta = zeros(1, Nt);
+            tnu   = zeros(1, Nt);
+            for i=2:Nt
+                tbeta_old = tbeta(i-1);
+                V_tmp = 0.5*(V(i)+V(i-1))*dt;
+                tbeta(i)  = tbeta_old + V_tmp;
+                tbeta_tmp = tbeta_old + 0.5*V_tmp;
+                tnu(i)    = tnu(i-1) -2*dt*tbeta_tmp;
+            end
+            if(nargin>2)
+                N_supp = ceil(T_supp/dt);
+                if(Nt<N_supp)
+                    error('Insuficient number of time-steps!');
+                end
+                tbeta_T = tbeta(N_supp);
+                tbeta  = tbeta-tbeta_T;
+                tnu    = tnu +2*tbeta_T*(0:Nt-1)*dt;
+            end
+
+            tB = zeros(1, Nt);
+            for i=2:Nt
+                tB(i)  = tB(i-1) + 0.5*dt*(tbeta(i)^2+tbeta(i-1)^2);
+            end
+
+        end
+
+
+        % =========================================================
+        % Convolution Quadrature, Trapezoidal rule
+        % =========================================================
         function wh = quadW_CQ(N, dx, dt, tol )
             if(N<LSE.CQ_M0)
                 N = LSE.CQ_M0;
@@ -76,618 +841,11 @@ classdef LSE
             % Quadrature weights
             wh = (rho.^(-n)).*fft(F_val)/N;
         end
-
-
-        function E = TBC_CQ_evol(Data)
-            % Solving Linear Schroedinger equation using FEM
-            % iu_t+u_xx=0
-            % TBC^(*) -- discretized using convolution quadrature (CQ).
-            % Argument structure is 
-            % Data
-            %   |----p  ---->   Highest degree of the polynomials
-            %   |----N  ---->   Number of partitions defining finite elements
-            %   |----x  ---->   Grid points
-            %   |----FM ---->   Forward Transform matrix
-            %   |----IM ---->   Inverse transform matrix
-            %   |----FMi---->   Forward transform for anti-aliasing
-            %   |----IMi---->   Inverse transform for anti-aliasing
-            %   |----P  ---->   Number of LGL points for Numerical integration
-            %   |----xri---->   LGL points for Numerical integration
-            %   |----quadWi->   Quadrature weights for LGL points
-            %   |----tol---->   tolerance
-            %   |----dt ---->   Time step
-            %   |----Nt ---->   Number of time steps
-            %   |----Nth---->   Threshold iteration
-            %   |----x_r---->   Left boundary
-            %   |----x_l---->   Right boundary
-            %   |----u0 ---->   Initial data
-            %
-            % out ---> N x Nt matrix containing Legendre transform of the solution on 
-            % the FEM grid.
-            %
-            FM      = Data.FM;
-            IM      = Data.IM;
-            FMi     = Data.FMi;
-            IMi     = Data.IMi;
-            quadWi  = Data.quadWi;
-            xri     = Data.xri;
-            tol     = Data.tol;
-            N       = Data.N;
-            p       = Data.p;
-            P       = Data.P;
-            dt      = Data.dt;
-            Nt      = Data.Nt;
-            x_r     = Data.x_r;
-            x_l     = Data.x_l;
-            dx_l    = Data.dx_l;
-            dx_r    = Data.dx_r;
-            x       = Data.x;
-            tol     = Data.tol;
-            profile = Data.hfunc;
-
-            I  =  sqrt(-1);
-            dx =  (x_r-x_l)/N;
-            J  =  dx/2;
-            r  =  2/dt;
-
-            Q = mxfem1d_quadM( quadWi, IMi);
-            x1 = ref2mesh (xri, N, [x_l x_r]);
-
-            % mass matrix
-            pot = ones(size(x1));
-            LGMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGMM = transpose(LGMM) - diag(diag(LGMM));
-            
-            %% stiffness matrix
-            [row1, col1, gsm, nnz1_] = fem1d_crgsm( p, N);
-            GSM = sparse(row1, col1, gsm, N*p+1, N*p+1, nnz1_);
-            %%
-            GM = GSM/J+(-I*r*J)*(UGMM+LGMM);
-            u0 = profile(x,0);
-            U  = mxfem1d_FLT( N, FM, u0);
-            X  = zeros(p*N+1,1);
-            Y  = zeros((p+1)*N,1);
-
-            E = zeros(N*(p+1), Nt);
-            E(:, 1) = U;
-
-            yL = [0];
-            yR = [0];
-
-            SL = 0;
-            SR = 0;
-
-            whr = LSE.quadW_CQ(Nt, dx_r, dt, tol);
-            whl = LSE.quadW_CQ(Nt, dx_l, dt, tol);
-
-            if(dx_r==0)
-                nx_l  = 0; 
-                xi_l  = -1;
-                IMb_l = mxLGLdataIM( p, xi_l);
-                GM(1, 1) = GM(1, N)+whl(1);
-                nx_r  = N-1; 
-                xi_r  = 1;
-                IMb_r = mxLGLdataIM( p, xi_r);
-                GM(N+1, N+1) = GM(N+1, N+1)+whr(1);
-            else
-                [nx_l, xi_l] = LSE.fem_index(N, x_l, x_r, x_l+dx_l);
-                IMb_l   = mxLGLdataIM( p, xi_l);
-                IMvb_l  = LSE.Lobatto(IMb_l);
-                GM(1, nx_l+1) = GM(1, nx_l+1) + whl(1)*IMvb_l(1);
-                GM(1, nx_l+2) = GM(1, nx_l+2) + whl(1)*IMvb_l(2);
-                shift = N+1 + nx_l*(p-2);
-                for k=3:p+1
-                    GM(1, shift+k) = GM(1, shift+k) + ...
-                                       whl(1)*IMvb_l(k);
-                end
-
-                [nx_r, xi_r] = LSE.fem_index(N, x_l, x_r, x_r-dx_r);
-                IMb_r  = mxLGLdataIM( p, xi_r);
-                IMvb_r = LSE.Lobatto(IMb_r);
-                GM(N+1, nx_r+1) = GM(N+1, nx_r+1) + whr(1)*IMvb_r(1);
-                GM(N+1, nx_r+2) = GM(N+1, nx_r+2) + whr(1)*IMvb_r(2);
-                shift = N+1 + nx_r*(p-2);
-                for k=3:p+1
-                    GM(N+1, shift+k) = GM(N+1, shift+k) + ...
-                                       whr(1)*IMvb_r(k);
-                end
-            end
-            
-            for j=2:Nt,
-                Pvb = mxfem1d_PrjL2F( p, E(:, j-1));
-                F   = -I*r*J*Pvb;
-
-                whl_tmp = fliplr(whl((2:j)));
-                whr_tmp = fliplr(whr((2:j)));
-
-                SL = sum(whl_tmp.*yL);
-                SR = sum(whr_tmp.*yR);
-
-                tmpF = F;
-                tmpF(1) = F(1)-SL;
-                tmpF(N+1) = F(N+1)-SR;
-
-                X = GM\tmpF;
-                Y = mxfem1d_F2L( p, X);
-
-                E(:, j)  = 2*Y-E(:, j-1);
-                yL(1, j) = IMb_l*Y((nx_l)*(p+1)+1:(nx_l)*(p+1)+p+1,1);
-                yR(1, j) = IMb_r*Y((nx_r)*(p+1)+1:(nx_r)*(p+1)+p+1,1);
-            end
-        end
-
-        function eTBC = TBC_CQ_error(Data)
-            % Solving Linear Schroedinger equation using FEM
-            % iu_t+u_xx=0
-            % TBC^(*) -- discretized using convolution quadrature (CQ).
-            % Argument structure is 
-            % Data
-            %   |----p  ---->   Highest degree of the polynomials
-            %   |----N  ---->   Number of partitions defining finite elements
-            %   |----x  ---->   Grid points
-            %   |----FM ---->   Forward Transform matrix
-            %   |----IM ---->   Inverse transform matrix
-            %   |----FMi---->   Forward transform for anti-aliasing
-            %   |----IMi---->   Inverse transform for anti-aliasing
-            %   |----P  ---->   Number of LGL points for Numerical integration
-            %   |----xri---->   LGL points for Numerical integration
-            %   |----quadWi->   Quadrature weights for LGL points
-            %   |----tol---->   tolerance
-            %   |----dt ---->   Time step
-            %   |----Nt ---->   Number of time steps
-            %   |----Nth---->   Threshold iteration
-            %   |----x_r---->   Left boundary
-            %   |----x_l---->   Right boundary
-            %   |----u0 ---->   Initial data
-            %
-            % out ---> N x Nt matrix containing Legendre transform of the solution on 
-            % the FEM grid.
-            %
-            FM      = Data.FM;
-            IM      = Data.IM;
-            FMi     = Data.FMi;
-            IMi     = Data.IMi;
-            quadWi  = Data.quadWi;
-            xri     = Data.xri;
-            tol     = Data.tol;
-            N       = Data.N;
-            p       = Data.p;
-            P       = Data.P;
-            dt      = Data.dt;
-            Nt      = Data.Nt;
-            x_r     = Data.x_r;
-            x_l     = Data.x_l;
-            dx_l    = Data.dx_l;
-            dx_r    = Data.dx_r;
-            x       = Data.x;
-            tol     = Data.tol;
-            profile = Data.hfunc;
-
-            I  =  sqrt(-1);
-            dx =  (x_r-x_l)/N;
-            J  =  dx/2;
-            r  =  2/dt;
-
-            Q = mxfem1d_quadM( quadWi, IMi);
-            x1 = ref2mesh (xri, N, [x_l x_r]);
-
-            % mass matrix
-            pot = ones(size(x1));
-            LGMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGMM = transpose(LGMM) - diag(diag(LGMM));
-            
-            %% stiffness matrix
-            [row1, col1, gsm, nnz1_] = fem1d_crgsm( p, N);
-            GSM = sparse(row1, col1, gsm, N*p+1, N*p+1, nnz1_);
-            %%
-            GM = GSM/J+(-I*r*J)*(UGMM+LGMM);
-            u0 = profile(x,0);
-            U  = mxfem1d_FLT( N, FM, u0);
-            X  = zeros(p*N+1,1);
-            Y  = zeros((p+1)*N,1);
-
-            E = zeros(N*(p+1), Nt);
-            E = U;
-
-            yL = [0];
-            yR = [0];
-
-            SL = 0;
-            SR = 0;
-
-            whr = LSE.quadW_CQ(Nt, dx_r, dt, tol);
-            whl = LSE.quadW_CQ(Nt, dx_l, dt, tol);
-
-            if(dx_r==0)
-                nx_l  = 0; 
-                xi_l  = -1;
-                IMb_l = mxLGLdataIM( p, xi_l);
-                GM(1, 1) = GM(1, 1)+whl(1);
-                nx_r  = N-1; 
-                xi_r  = 1;
-                IMb_r = mxLGLdataIM( p, xi_r);
-                GM(N+1, N+1) = GM(N+1, N+1)+whr(1);
-            else
-                [nx_l, xi_l] = LSE.fem_index(N, x_l, x_r, x_l+dx_l);
-                IMb_l   = mxLGLdataIM( p, xi_l);
-                IMvb_l  = LSE.Lobatto(IMb_l);
-                GM(1, nx_l+1) = GM(1, nx_l+1) + whl(1)*IMvb_l(1);
-                GM(1, nx_l+2) = GM(1, nx_l+2) + whl(1)*IMvb_l(2);
-                shift = N+1 + nx_l*(p-2);
-                for k=3:p+1
-                    GM(1, shift+k) = GM(1, shift+k) + ...
-                                       whl(1)*IMvb_l(k);
-                end
-
-                [nx_r, xi_r] = LSE.fem_index(N, x_l, x_r, x_r-dx_r);
-                IMb_r  = mxLGLdataIM( p, xi_r);
-                IMvb_r = LSE.Lobatto(IMb_r);
-                GM(N+1, nx_r+1) = GM(N+1, nx_r+1) + whr(1)*IMvb_r(1);
-                GM(N+1, nx_r+2) = GM(N+1, nx_r+2) + whr(1)*IMvb_r(2);
-                shift = N+1 + nx_r*(p-2);
-                for k=3:p+1
-                    GM(N+1, shift+k) = GM(N+1, shift+k) + ...
-                                       whr(1)*IMvb_r(k);
-                end
-            end
-            
-            for j=2:Nt,
-                Pvb = mxfem1d_PrjL2F( p, E);
-                F   = -I*r*J*Pvb;
-
-                whl_tmp = fliplr(whl((2:j)));
-                whr_tmp = fliplr(whr((2:j)));
-
-                SL = sum(whl_tmp.*yL);
-                SR = sum(whr_tmp.*yR);
-
-                tmpF = F;
-                tmpF(1) = F(1)-SL;
-                tmpF(N+1) = F(N+1)-SR;
-
-                X = GM\tmpF;
-                Y = mxfem1d_F2L( p, X);
-
-                E = 2*Y-E;
-                yL(1, j) = IMb_l*Y((nx_l)*(p+1)+1:(nx_l)*(p+1)+p+1,1);
-                yR(1, j) = IMb_r*Y((nx_r)*(p+1)+1:(nx_r)*(p+1)+p+1,1);
-
-                u = profile(x,(j-1)*dt);
-                U = mxfem1d_FLT( N, FM, u);
-                norm_ana = mxfem1d_Norm2( p, N, U);
-                eTBC(j)  = mxfem1d_Norm2( p, N, E-U)/norm_ana;
-            end
-            out = eTBC;
-        end
-
-        function [eTBC, E] = TBC_CQ_evol3(Data)
-            % Solving Linear Schroedinger equation using FEM
-            % iu_t+u_xx=0
-            % TBC^(*) -- discretized using convolution quadrature (CQ).
-            % Argument structure is 
-            % Data
-            %   |----p  ---->   Highest degree of the polynomials
-            %   |----N  ---->   Number of partitions defining finite elements
-            %   |----x  ---->   Grid points
-            %   |----FM ---->   Forward Transform matrix
-            %   |----IM ---->   Inverse transform matrix
-            %   |----FMi---->   Forward transform for anti-aliasing
-            %   |----IMi---->   Inverse transform for anti-aliasing
-            %   |----P  ---->   Number of LGL points for Numerical integration
-            %   |----xri---->   LGL points for Numerical integration
-            %   |----quadWi->   Quadrature weights for LGL points
-            %   |----tol---->   tolerance
-            %   |----dt ---->   Time step
-            %   |----Nt ---->   Number of time steps
-            %   |----Nth---->   Threshold iteration
-            %   |----x_r---->   Left boundary
-            %   |----x_l---->   Right boundary
-            %   |----u0 ---->   Initial data
-            %
-            % out ---> N x Nt matrix containing Legendre transform of the solution on 
-            % the FEM grid.
-            %
-            FM      = Data.FM;
-            IM      = Data.IM;
-            FMi     = Data.FMi;
-            IMi     = Data.IMi;
-            quadWi  = Data.quadWi;
-            xri     = Data.xri;
-            tol     = Data.tol;
-            N       = Data.N;
-            p       = Data.p;
-            P       = Data.P;
-            dt      = Data.dt;
-            Nt      = Data.Nt;
-            x_r     = Data.x_r;
-            x_l     = Data.x_l;
-            dx_l    = Data.dx_l;
-            dx_r    = Data.dx_r;
-            x       = Data.x;
-            profile = (Data.hfunc);
-            V       = (Data.V);
-            nu      = (Data.nu);
-            beta    = (Data.beta);
-            B       = (Data.B);
-
-            I  =  sqrt(-1);
-            dx =  (x_r-x_l)/N;
-            J  =  dx/2;
-            r  =  2/dt;
-
-            Q = mxfem1d_quadM( quadWi, IMi);
-            x1 = ref2mesh (xri, N, [x_l x_r]);
-
-            % mass matrix
-            pot = ones(size(x1));
-            LGMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGMM = transpose(LGMM) - diag(diag(LGMM));
-            
-            %% stiffness matrix
-            [row1, col1, gsm, nnz1_] = fem1d_crgsm( p, N);
-            GSM = sparse(row1, col1, gsm, N*p+1, N*p+1, nnz1_);
-
-            phi = @(x) x;
-            pot = (phi(x1));
-            LGPMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
-            GPMM  = -J*(UGPMM+LGPMM);  
-            %%
-            GM = GSM/J+(-I*r*J)*(UGMM+LGMM);
-            u0 = profile(x,0);
-            U  = mxfem1d_FLT( N, FM, u0);
-            X  = zeros(p*N+1,1);
-            Y  = zeros((p+1)*N,1);
-
-            E = zeros(N*(p+1), Nt);
-            E(:, 1) = U;
-
-            eTBC = zeros(1,Nt);
-            tjp1o2 = -0.5*dt;
-            for j=2:Nt,
-
-                tjp1o2 = tjp1o2 + dt;
-
-                tmpV = V(tjp1o2);
-                GM1 = GPMM*tmpV + GM;
-
-                Pvb = mxfem1d_PrjL2F( p, E(:, j-1));
-                F   = -I*r*J*Pvb;
-
-                X = GM1\F;
-                Y = mxfem1d_F2L( p, X);
-
-                E(:, j)  = 2*Y-E(:, j-1);
-
-
-                u = profile(x,(j-1)*dt);
-                U = mxfem1d_FLT( N, FM, u);
-                norm_ana = mxfem1d_Norm2( p, N, U);
-                eTBC(j)  = mxfem1d_Norm2( p, N, E(:, j)-U)/norm_ana;
-            end
-        end
-
-        function [eTBC, E] = TBC_CQ_evol4(Data)
-            % Solving Linear Schroedinger equation using FEM
-            % iu_t+u_xx=0
-            % TBC^(*) -- discretized using convolution quadrature (CQ).
-            % Argument structure is 
-            % Data
-            %   |----p  ---->   Highest degree of the polynomials
-            %   |----N  ---->   Number of partitions defining finite elements
-            %   |----x  ---->   Grid points
-            %   |----FM ---->   Forward Transform matrix
-            %   |----IM ---->   Inverse transform matrix
-            %   |----FMi---->   Forward transform for anti-aliasing
-            %   |----IMi---->   Inverse transform for anti-aliasing
-            %   |----P  ---->   Number of LGL points for Numerical integration
-            %   |----xri---->   LGL points for Numerical integration
-            %   |----quadWi->   Quadrature weights for LGL points
-            %   |----tol---->   tolerance
-            %   |----dt ---->   Time step
-            %   |----Nt ---->   Number of time steps
-            %   |----Nth---->   Threshold iteration
-            %   |----x_r---->   Left boundary
-            %   |----x_l---->   Right boundary
-            %   |----u0 ---->   Initial data
-            %
-            % out ---> N x Nt matrix containing Legendre transform of the solution on 
-            % the FEM grid.
-            %
-            FM      = Data.FM;
-            IM      = Data.IM;
-            FMi     = Data.FMi;
-            IMi     = Data.IMi;
-            quadWi  = Data.quadWi;
-            xri     = Data.xri;
-            tol     = Data.tol;
-            N       = Data.N;
-            p       = Data.p;
-            P       = Data.P;
-            dt      = Data.dt;
-            Nt      = Data.Nt;
-            x_r     = Data.x_r;
-            x_l     = Data.x_l;
-            dx_l    = Data.dx_l;
-            dx_r    = Data.dx_r;
-            x       = Data.x;
-            profile = (Data.hfunc);
-            V       = (Data.V);
-            nu      = (Data.nu);
-            beta    = (Data.beta);
-            B       = (Data.B);
-
-            I  =  sqrt(-1);
-            dx =  (x_r-x_l)/N;
-            J  =  dx/2;
-            r  =  2/dt;
-
-            Q = mxfem1d_quadM( quadWi, IMi);
-            x1 = ref2mesh (xri, N, [x_l x_r]);
-
-            % mass matrix
-            pot = ones(size(x1));
-            LGMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGMM = transpose(LGMM) - diag(diag(LGMM));
-            
-            %% stiffness matrix
-            [row1, col1, gsm, nnz1_] = fem1d_crgsm( p, N);
-            GSM = sparse(row1, col1, gsm, N*p+1, N*p+1, nnz1_);
-
-            phi = @(x) x;
-            pot = (phi(x1));
-            LGPMM = mxfem1d_sparse_GMM( p, Q, pot);
-            UGPMM = transpose(LGPMM) - diag(diag(LGPMM));
-            GPMM  = -J*(UGPMM+LGPMM);  
-            %%
-            GM = GSM/J+(-I*r*J)*(UGMM+LGMM);
-            u0 = profile(x,0);
-            U  = mxfem1d_FLT( N, FM, u0);
-            X  = zeros(p*N+1,1);
-            Y  = zeros((p+1)*N,1);
-
-            E = zeros(N*(p+1), Nt);
-            E(:, 1) = U;
-
-            yL  = [0];
-            yR1 = [0];
-
-            SL = 0;
-            SR1 = 0;
-
-            tol = 1e-9;
-
-            tjp1o2 = -0.5*dt;
-            t = 0;
-
-            eTBC = zeros(1,Nt);
-            wh0_old = 0;
-            SR1_old = 0;
-            for j=2:Nt,
-
-                t = t + dt;
-                nu_tmp1   = nu(t);
-                beta_tmp1 = beta(t);
-                B_tmp1    = B(t);
-
-                tjp1o2 = tjp1o2 + dt;
-                nu_tmp   = nu(tjp1o2);
-                beta_tmp = beta(tjp1o2);
-                B_tmp    = B(tjp1o2);
-                wh1 = LSE.quadW_CQ(j, dx_r + nu_tmp1, dt, tol);
-
-                tmpV = V(tjp1o2);
-                GM1 = GPMM*tmpV + GM;
-
-                x_tmp1 = x_r - dx_r - nu_tmp1;
-
-                if(x_tmp1>x_r)
-                    err_str = sprintf( 'x-coordinate inconsistent: %0.5f',...
-                                       x_tmp1)
-                    error(err_str)
-                end
-
-                [nx, xi] = LSE.fem_index(N, x_l, x_r, x_tmp1);
-
-                IM_tbc   = mxLGLdataIM( p, xi);
-                 
-                wh0_new = wh1(1)*exp(1i*beta_tmp1*(dx_r + nu_tmp1));
-
-                IM1_tbc = 0.5*(wh0_new+wh0_old)*LSE.Lobatto(IM_tbc);
-
-                GM1(N+1, N+1)   = GM1(N+1, N+1)  - 1i*beta_tmp;
-                GM1(N+1, nx+1)  = GM1(N+1, nx+1) + IM1_tbc(1);
-                GM1(N+1, nx+2)  = GM1(N+1, nx+2) + IM1_tbc(2);
-                
-                shift = N + 1 + nx*(p-2);
-                
-                for k=3:p+1
-                    GM1(N+1, shift+k) = GM1(N+1, shift+k) + ...
-                                      IM1_tbc(k);
-                end
-
-
-                Pvb = mxfem1d_PrjL2F( p, E(:, j-1));
-                F   = -I*r*J*Pvb;
-
-                wh1_tmp = fliplr(wh1((2:j)));
-                Xi1 = beta_tmp1*x_tmp1 - B_tmp1; 
-                Xi = beta_tmp1*x_r - B_tmp1; 
-                SR1_new = exp(1i*Xi)*sum(wh1_tmp.*yR1);
-
-
-                tmpF = F;
-                tmpF(N+1) = F(N+1)-0.5*(SR1_new + SR1_old);
-
-                X = GM1\tmpF;
-                Y = mxfem1d_F2L( p, X);
-
-                E(:, j)  = 2*Y-E(:, j-1);
-                yR1(1, j) = exp(-1i*Xi1)*IM_tbc*E((nx)*(p+1)+1:(nx)*(p+1)+p+1,j);
-                SR1_old = SR1_new;
-                wh0_old = wh0_new;
-                
-                u = profile(x,(j-1)*dt);
-                U = mxfem1d_FLT( N, FM, u);
-                norm_ana = mxfem1d_Norm2( p, N, U);
-                eTBC(j)  = mxfem1d_Norm2( p, N, E(:, j)-U);
-            end
-        end
-        
-        function r = Gaussian_WP( xx, tt, A0, a, c)
-            [x,t] = ndgrid(xx,tt);
-
-            C = (1./(4*a*t*1i+1));
-            r = A0.*sqrt(C).*exp(-a*C.*(x-c*t).^2+0.5*1i*c*x-0.25*1i*c^2*t);
-        end
-
-        function [y, dy ] = Gaussian_WP1( x, t, A0, a, c)
-            % Fixed x
-            C  = (1./(4*a*t*1i+1));
-            y  = A0.*sqrt(C).*exp(-a*C.*(x-c*t).^2+0.5*1i*c*x-0.25*1i*c^2*t);
-            dy = -2*a*(x-c*t).*C.*y+0.5*1i*c*y;
-        end
-        
-        function [err, t] = test_quadW_CQ(c, Nt)
-            x_r = 10;
-            dx  = 5;
-            dt  = 0.5e-3;
-            A0  = 1;
-            a   = 1/2;
-            c   = 8;
-            tol = 1e-16;
-
-            t = (0:Nt-1)*dt;
-
-            [y_r, dy_r] = LSE.Gaussian_WP1(x_r, t, A0, a, c);
-            [y, dy]     = LSE.Gaussian_WP1(x_r+dx, t, A0, a, c);
-
-            Fdy1 = zeros(1,Nt);
-            Fdy2 = zeros(1,Nt);
-            Fdy3 = zeros(1,Nt);
-
-            wh1  = LSE.quadW_CQ(Nt, dx, dt, tol);
-            wh2  = LSE.quadW_CQ_BDF1(Nt, dx, dt, tol);
-            wh3  = LSE.quadW_CQ_BDF2(Nt, dx, dt, tol);
-
-            for i=1:Nt
-                wh1_tmp = fliplr(wh1((1:i)));
-                wh2_tmp = fliplr(wh2((1:i)));
-                wh3_tmp = fliplr(wh3((1:i)));
-
-                y_tmp  = y_r(1:i);
-                
-                Fdy1(i) = sum(wh1_tmp.*y_tmp);
-                Fdy2(i) = sum(wh2_tmp.*y_tmp);
-                Fdy3(i) = sum(wh3_tmp.*y_tmp);
-            end
-            err = zeros(3, Nt);
-            err(1,:) = abs(Fdy1 + dy);
-            err(2,:) = abs(Fdy2 + dy);
-            err(3,:) = abs(Fdy3 + dy);
-        end
-
-        function [nx, xi] = fem_index(N, x_l, x_r, x )
+        % =========================================================
+
+        function [nx, xi] = fem_index(N, domain, x )
+            x_l = domain(1);
+            x_r = domain(2);
             h  = (x_r-x_l)/N;
             d_x = x-x_l;
             nx = floor((x-x_l)/h);
@@ -705,115 +863,30 @@ classdef LSE
                 u(i) = (1/sqrt(2*(2*(i-1)-1)))*(v(i)-v(i-2));
             end
         end
+    end
 
-        function u = diff_legendre(xi,v)
-            lv = length(v);
-            u(1) = 0;
-            for i=2:lv
-                u(i) = (i-1)*(v(i-1)-xi*v(i))/(1-xi^2);
-            end
+    methods(Static)
+        % =========================================================
+        % Predefined potential functions
+        % =========================================================
+        function y = tpotential_CW(t, params)
+            theta = params.mup*t;
+            y     = params.g_0*cos(theta);
         end
 
-        function y = Gaussian_WP3( xx, tt, A0, a, c, g_0, mup)
-            [x,t] = ndgrid(xx,tt);
+        function y = tpotential_Gaussian(t, params)
+            theta = params.mup*t;
+            t0    = params.t_0;
+            sigma = params.sigma;
 
-            theta  = mup*t;
-            beta   = g_0*sin(theta)/mup;
-            nu     = 2.0*g_0*(cos(theta)-1.0)/(mup*mup);
-            ibeta2 = g_0*g_0*(theta/2.0 - sin(2*theta)/4.0)/(mup*mup*mup);
-
-            Xi = beta.*x -ibeta2;
-
-            x1 = x+nu-c*t;
-            C  = (1./(4*a*t*1i+1));
-            y  = A0.*sqrt(C).*exp(-a*C.*(x1).^2+0.5*1i*c*x1+0.25*1i*c^2*t+1i*Xi);
+            y = params.g_0*cos(theta).*exp(-(t-t0).^2/(sigma^2));
         end
-        
-        function [y, dy] = Gaussian_WP4( x, t, A0, a, c, g_0, mup)
+        % =========================================================
 
-            theta  = mup*t;
-            beta   = g_0*sin(theta)/mup;
-            nu     = 2.0*g_0*(cos(theta)-1.0)/(mup*mup);
-            ibeta2 = g_0*g_0*(theta/2.0 - sin(2*theta)/4.0)/(mup*mup*mup);
-
-            Xi = beta.*x - ibeta2;
-            x1 = x+nu-c*t;
-
-            C  = (1./(4*a*t*1i+1));
-            y  = A0.*sqrt(C).*exp(-a*C.*(x1).^2+0.5*1i*c*x1+0.25*1i*c^2*t+1i*Xi);
-            dy = -2*a*(x1).*C.*y+0.5*1i*c*y+1i*beta.*y;
-            
-        end
-
-        function y = V(t, g_0, mup)
-            theta = mup*t;
-            y     = g_0*cos(theta);
-        end
-
-        function y = beta(t, g_0, mup)
-            theta = mup*t;
-            y     = g_0*sin(theta)/mup;
-        end
-
-        function y = nu(t, g_0, mup)
-            theta = mup*t;
-            y     = 2.0*g_0*(cos(theta)-1.0)/(mup*mup);
-        end
-
-        function y = B(t, g_0, mup)
-            theta = mup*t;
-            y     = g_0*g_0*(theta/2.0 - sin(2*theta)/4.0)/(mup*mup*mup);
-        end
-
-        function [err, t] = test_quadW_CQ2(c, Nt)
-            x_r = 10;
-            dx  = 5;
-            x   = x_r + dx;
-            dt  = 0.5e-3;
-            A0  = 1;
-            a   = 1/2;
-            % c   = 8;
-            tol = 1e-16;
-
-            t = (0:Nt-1)*dt;
-
-            Fdy1  = zeros(1,Nt);
-            Fdy2  = zeros(1,Nt);
-            Fdy3  = zeros(1,Nt);
-
-            g_0  = 1;
-            mup  = 2*pi;
-            beta_tmp = LSE.beta(t, g_0, mup);
-            nu_tmp   = LSE.nu(t, g_0, mup);
-            B_tmp    = LSE.B(t, g_0, mup);
-            
-            [y_r, dy_r] = LSE.Gaussian_WP4(x_r-nu_tmp, t, A0, a, c, g_0, mup);
-            [y, dy]     = LSE.Gaussian_WP4(x, t, A0, a, c, g_0, mup);
-
-            Xi_r = beta_tmp.*(x_r - nu_tmp) - B_tmp;
-            Xi  = beta_tmp.*x - B_tmp;
-            y2  = y_r.*exp(-1i*Xi_r);
-            y3  = (-1i*beta_tmp.*y + dy).*exp(-1i*Xi);
-
-            for i=1:Nt
-                wh1  = LSE.quadW_CQ(i, dx+nu_tmp(i), dt, tol);
-                wh2  = LSE.quadW_CQ_BDF1(i, dx+nu_tmp(i), dt, tol);
-                wh3  = LSE.quadW_CQ_BDF2(i, dx+nu_tmp(i), dt, tol);
-                
-                wh1_tmp = fliplr(wh1((1:i)));
-                wh2_tmp = fliplr(wh2((1:i)));
-                wh3_tmp = fliplr(wh3((1:i)));
-
-                y_tmp1  = y2(1:i);
-
-                Fdy1(i)  = sum(wh1_tmp.*y_tmp1);
-                Fdy2(i)  = sum(wh2_tmp.*y_tmp1);
-                Fdy3(i)  = sum(wh3_tmp.*y_tmp1);
-            end
-            err = zeros(3, Nt);
-            err(1, :) = abs(Fdy1 + y3);
-            err(2, :) = abs(Fdy2 + y3);
-            err(3, :) = abs(Fdy3 + y3);
+        function supp = find_support(x, vec, tol)
+        % find support of a function
+            x_supp = x(abs(vec)>tol);
+            supp = [min(x_supp), max(x_supp)];
         end
     end
 end

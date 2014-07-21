@@ -1,3 +1,4 @@
+addpath ../../chebfun
 addpath ../MATLAB
 addpath ../MEXBUILD
 addpath ../BUILD

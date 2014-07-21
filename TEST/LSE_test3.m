@@ -2,7 +2,8 @@ clc
 clear
 Nt = 2^14;
 c = 10;
-[err, t] = LSE.test_quadW_CQ(c, Nt);
+fileStr = 'CQ2_TBC_c10';
+[err, t] = LSE.test_quadW_CQ2(c, Nt);
 %%
 PX  =   16;
 PY  =   16;
@@ -36,7 +37,6 @@ legend1 =   legend(axes1,'show');
 set(legend1, 'Interpreter','latex','Location','NorthEast');
 
 myfig = gcf;
-fileStr = 'CQ_TBC_c10';
 tmpStr = [fileStr, '.eps'];
 print(myfig, '-r1000', '-tiff', '-depsc', tmpStr);
 tmpStr = [fileStr, '.pdf'];
@@ -44,6 +44,7 @@ print(myfig, '-r1000', '-dpdf', tmpStr);
 %%
 K = (1:100:Nt);
 M = [(t(K))', (err(:, K))'];
-dlmwrite('CQ_TBC_c10.dat', M, 'delimiter', '\t', 'precision', '%.9g')
+file_name = sprintf('%s.dat',fileStr);
+dlmwrite(file_name, M, 'delimiter', '\t', 'precision', '%.9g')
 
 

@@ -1,27 +1,5 @@
 clc
 clear
-% Nt = 2^14;
-% [err, t] = LSE.test_quadW_CQ(Nt);
-% 
-% PX  =   16;
-% PY  =   16;
-% lw  =   2;
-% ms  =   8;
-% fs  =   14;
-% 
-% figure1 =   figure('PaperPosition',[0 0 PX PY],...
-%     'PaperUnits','centimeters',...
-%     'PaperPositionMode','manual',...
-%     'PaperType','<custom>',...
-%     'PaperSize',[PX PY]);
-% axes1   =   axes('Parent',figure1,...
-%     'FontName','Times',...
-%     'FontSize',fs,...
-%     'YScale','log');
-% box(axes1,'on');
-% hold(axes1,'all');
-% plot(t, err, 'r', 'MarkerSize', ms, 'LineWidth', lw)
-% axis([0,max(t),1e-10,1e-3])
 %%
 I = sqrt(-1);
 tol = 1e-9; % tolerance for LGL points
@@ -40,23 +18,28 @@ IMi = mxLGLdataIM( p, xri);
 
 dt  =  0.5e-3;
 r   =  2/dt;
-Nt  =  2^13;
+Nt  =  2^14;
 t   = (0:Nt-1)*dt;
-x_r =  15;
-x_l = -15;
+x_r =  10;
+x_l = -10;
 
 h = (x_r-x_l)/N;
-dx_l = 0;
-dx_r = 5.03;
+dx_l = 1.03;
+dx_r = 1.03;
 
 x   =  ref2mesh(xr,N,[x_l x_r]);
 A0 = 1;
 a  = 1/2; 
-c  = 5;
-g0 = 1;
-mup = 4*pi;
+cl  = -5;
+cr  = 5;
 
-profile = @(x,t)LSE.Gaussian_WP3(x,t, A0, a, c, g0, mup);
+g0 = 1;
+mup = 2*pi;
+
+profile = @(x,t)LSE.Gaussian_WP3(x,t, A0, a, cr, g0, mup);
+% profile = @(x,t)LSE.Gaussian_WP3(x,t, A0, a, cr, g0, mup)+...
+%                 LSE.Gaussian_WP3(x,t, A0, a, cl, g0, mup);
+
 nu   = @(t)LSE.nu(t, g0, mup);
 beta = @(t)LSE.beta(t, g0, mup);
 B    = @(t)LSE.B(t, g0, mup);
@@ -86,13 +69,10 @@ Data = struct( 'N'     , N,...
                'tol'   , tol );
 
 %%
-% err = LSE.TBC_CQ_error(Data);
-% logerr_plot(t, err)
-
+% eTBC = LSE.TBC_CQ_error3(Data);
+% logerr_plot(t, eTBC)
 %%
-[eTBC, E] = LSE.TBC_CQ_evol4(Data);
-%%
-logerr_plot(t, eTBC)
+E = LSE.TBC_CQ_evol3(Data);
 %%
 xi  = (-1:0.1:1);
 x1  = ref2mesh( xi, N, [x_l x_r]);
@@ -106,6 +86,6 @@ options =   struct('levels',(-8:1),...
                 'magnification_factor',1e0,...
                 'tolerance', tol);
 % contour_plot(x1,t,PSI,options)
-K1 = (1:200:Nt);
+K1 = (1:500:Nt);
 curve_3d(x1,t,PSI,K1);
 % data to be plotted --> x,t,PSI

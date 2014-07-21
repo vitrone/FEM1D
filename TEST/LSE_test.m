@@ -24,14 +24,14 @@ x_r =  10;
 x_l = -10;
 
 h = (x_r-x_l)/N;
-dx_l = 0;%100.9*h;
-dx_r = 0;%100.5*h;
+dx_l = 100.9*h;
+dx_r = 100.5*h;
 
 x   =  ref2mesh(xr,N,[x_l x_r]);
 A0 = 1;
-a  = 1/2+1i/2; 
+a  = 1/2; 
 cr  =  8;
-cl  = -6;
+cl  = -8;
 % profile = @(x,t)LSE.Gaussian_WP(x, t, A0, a, c);
 profile = @(x,t)LSE.Gaussian_WP(x, t, A0, a, cr)+...
                 LSE.Gaussian_WP(x, t, A0, a, cl);
@@ -56,25 +56,25 @@ Data = struct( 'N'     , N,...
                'tol'   , tol );
 
 %%
-eTBC = LSE.TBC_CQ_error(Data);
-logerr_plot(t, eTBC)
+% eTBC = LSE.TBC_CQ_error(Data);
+% logerr_plot(t, eTBC)
 
 %%
-% E = LSE.TBC_CQ_evol(Data);
+E = LSE.TBC_CQ_evol(Data);
 
 %%
 xi  = (-1:0.1:1);
 x1  = ref2mesh( xi, N, [x_l x_r]);
 tmpIM = mxLGLdataIM( p, xi);
 
-% K = (1:20:Nt);
+% K = (1:100:Nt);
 PSI = mxfem1d_ILT( N, tmpIM, E);
 
 %%
 options =   struct('levels',(-8:1),...
                 'magnification_factor',1e0,...
                 'tolerance', tol);
-% contour_plot(x1,t,PSI,options)
-K1 = (1:100:Nt);
-curve_3d(x1,t,PSI,K1);
+contour_plot(x1,t,PSI,options)
+% K1 = (1:100:Nt);
+% curve_3d(x1,t,PSI,K1);
 % data to be plotted --> x,t,PSI
