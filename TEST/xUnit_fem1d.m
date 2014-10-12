@@ -156,7 +156,7 @@ classdef xUnit_fem1d < matlab.unittest.TestCase
 
             sM = M + transpose(M) - diag(diag(M));
             Pvb1 = sM*vb;
-            disp(sM)
+            % disp(sM)
             e = norm(Pvb-Pvb1)/norm(Pvb);
             testCase.verifyLessThan( e, tol );
             disp(e)

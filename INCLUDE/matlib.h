@@ -27,14 +27,30 @@
 
 /*============================================================================*/
 
-/* Indexing types */ 
-typedef unsigned int matlib_index;
-/* Real numbers */ 
-typedef double matlib_real;
-/* Complex numbers */ 
-typedef double complex matlib_complex;
-/* Integers */
-typedef int matlib_int;
+#define MATLIB_64
+
+#ifdef MATLIB_64
+    /* Indexing types */ 
+    typedef unsigned long long int matlib_index;
+    /* Real numbers */ 
+    typedef double matlib_real;
+    /* Complex numbers */ 
+    typedef double complex matlib_complex;
+    /* Integers */
+    typedef long long int matlib_int;
+#else
+    /* Indexing types */ 
+    typedef unsigned int matlib_index;
+    /* Real numbers */ 
+    typedef double matlib_real;
+    /* Complex numbers */ 
+    typedef double complex matlib_complex;
+    /* Integers */
+    typedef int matlib_int;
+
+#endif
+
+
 
 #define matlib_dv matlib_xv
 #define matlib_dm matlib_xm
@@ -548,7 +564,24 @@ void matlib_xzvwrite_csv
 /+============================================================================*/
 
 /*=====================[Linear solver based on PARDISO]=======================*/
+#ifdef MATLIB_64
+    #define _MATLIB_PARDISO PARDISO_64 
+#else
+    #define _MATLIB_PARDISO PARDISO 
+#endif
+
 #define PARDISO_NIPARAM (64)
+
+#define _E_PARDISO_INIT                 (-2)
+#define _E_PARDISO_FREE                 (-1) /* release all memory */ 
+#define _E_PARDISO_FREE_LU              (0)
+#define _E_PARDISO_ANALYSIS_AND_FACTOR  (12)
+#define _E_PARDISO_SOLVE_AND_REFINE     (33)
+
+#define _E_PARDISO_REAL_SYM_INDEF  (-2)
+#define _E_PARDISO_REAL_SYM_PDEF   ( 2)
+#define _E_PARDISO_COMPLEX_SYM     ( 6)
+
 typedef enum
 {
     PARDISO_RHS,
@@ -577,7 +610,7 @@ typedef enum
 typedef struct
 {
     void*          ptr[PARDISO_NIPARAM];
-    matlib_index   iparam[PARDISO_NIPARAM];
+    matlib_int     iparam[PARDISO_NIPARAM];
     PARDISO_PHASE  phase_enum;
     PARDISO_MTYPE  mtype;
     PARDISO_SOLVEC sol_enum;

@@ -1633,7 +1633,7 @@ int main()
     /* Create the test suite */ 
     CU_SuiteInfo suites[] = 
     {
-        { "Fem1d Lobatto basis", init_suite, clean_suite, test_array },
+        { "Fem1d Lobatto basis", init_suite, clean_suite, NULL, NULL, test_array },
         CU_SUITE_INFO_NULL,
     }; 
 

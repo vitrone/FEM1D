@@ -642,7 +642,7 @@ void matlib_xgemm
                    "(A:%d-by-%d, B:%d-by-%d, C:%d-by-%d)",
                    A.lenc, A.lenr,
                    B.lenc, B.lenr,
-                   C.lenr, C.lenr);
+                   C.lenc, C.lenr);
     }
 
     /* check if the order is okay */ 

@@ -1673,7 +1673,7 @@ int main(void)
     /* Create the test suite */ 
     CU_SuiteInfo suites[] = 
     {
-        { "Parallelization of Routines", init_suite, clean_suite, test_array },
+        { "Parallelization of Routines", init_suite, clean_suite, NULL, NULL, test_array },
         CU_SUITE_INFO_NULL,
     }; 
 

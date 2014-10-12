@@ -330,6 +330,438 @@ void test_zgemm(void)
     CU_ASSERT_TRUE(e_relative<TOL);
     
 }
+/*============================================================================*/
+
+ /* A1 -> 5-by-3 */ 
+
+static matlib_real A1_rm[15] =
+{
+1.295198610346667e-01, 
+4.371724372446585e-01,
+1.568078875443956e-01,
+8.798835824178787e-01,
+3.798389169076282e-01,
+3.260342840664192e-01,
+4.407912846769657e-02,
+9.796574398465744e-01,
+3.140619286734648e-01,
+6.867200184808028e-01,
+3.989934226116294e-01,
+8.945006639042554e-01,
+7.337729049335920e-01,
+4.401869142693676e-01,
+2.470241792640397e-01
+};
+
+static matlib_real A1_cm[15] =
+{
+1.295198610346667e-01, 
+8.798835824178787e-01,
+4.407912846769657e-02,
+6.867200184808028e-01,
+7.337729049335920e-01,
+4.371724372446585e-01,
+3.798389169076282e-01,
+9.796574398465744e-01,
+3.989934226116294e-01,
+4.401869142693676e-01,
+1.568078875443956e-01,
+3.260342840664192e-01,
+3.140619286734648e-01,
+8.945006639042554e-01,
+2.470241792640397e-01
+};
+
+    /* A2 -> 3-by-2 */ 
+static matlib_real A2_rm[6] =
+{
+3.106790159126492e-01,
+1.436375950594925e-01,
+4.088689080421710e-01,
+8.713220665730218e-01,
+7.080108940640530e-01,
+8.315589675345991e-02};
+    
+static matlib_real A2_cm[6] =
+{
+3.106790159126492e-01,
+4.088689080421710e-01,
+7.080108940640530e-01,
+1.436375950594925e-01,
+8.713220665730218e-01,
+8.315589675345991e-02
+};
+    
+    /* A3 -> 5-by-2 */ 
+static matlib_real A3_rm[10] =
+{
+3.300070126663544e-01,
+4.125614133270096e-01,
+6.595015136486246e-01,
+4.844580650195631e-01,
+6.366051948516696e-01,
+8.860446663411344e-01,
+1.009801719360099e+00,
+5.206735903263244e-01,
+5.828423969960751e-01,
+5.094834643505544e-01};
+
+static matlib_real A3_cm[10] =
+{
+3.300070126663544e-01,
+6.595015136486246e-01,
+6.366051948516696e-01,
+1.009801719360099e+00,
+5.828423969960751e-01,
+4.125614133270096e-01,
+4.844580650195631e-01,
+8.860446663411344e-01,
+5.206735903263244e-01,
+5.094834643505544e-01
+};
+
+void test_matlib1(void)
+{
+    /* 
+     * M3 = M1*M2;
+     *
+     * */ 
+
+    matlib_xm M1 = { .lenc   = 5, 
+                     .lenr   = 3,
+                     .order  = MATLIB_ROW_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = A1_rm};
+
+    DEBUG_PRINT_XM( M1, "%s:", "M1");
+    matlib_xm M2 = { .lenc   = 3, 
+                     .lenr   = 2,
+                     .order  = MATLIB_ROW_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = A2_rm};
+
+    DEBUG_PRINT_XM( M2, "%s:", "M2");
+
+    matlib_real A3_tmp[5][2];
+    matlib_xm M3 = { .lenc   = 5, 
+                     .lenr   = 2,
+                     .order  = MATLIB_ROW_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = &A3_tmp[0][0]};
+
+    matlib_xv VM3 = { .len    = M3.lenc*M3.lenr, 
+                      .type   = MATLIB_ROW_VECT, 
+                      .elem_p = M3.elem_p};
+
+    matlib_xv VA3 = { .len    = 10, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = A3_rm};
+
+    matlib_xgemm( 1.0, M1, M2, 0.0, M3);
+    DEBUG_PRINT_XM( M3, "%s:", "M3");
+
+    matlib_real norm_actual = matlib_xnrm2(VA3);
+    matlib_xaxpy(-1.0, VA3, VM3);
+    matlib_real e_relative = matlib_xnrm2(VM3)/norm_actual;
+
+    debug_exit("Relative error: %0.16g", e_relative);
+    CU_ASSERT_TRUE(e_relative<TOL);
+
+
+}
+
+
+void test_matlib2(void)
+{
+    /* 
+     * M3 = M1*M2;
+     *
+     * */ 
+
+    matlib_xm M1 = { .lenc   = 5, 
+                     .lenr   = 3,
+                     .order  = MATLIB_COL_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = A1_cm};
+
+    DEBUG_PRINT_XM( M1, "%s:", "M1");
+
+    matlib_xm M2 = { .lenc   = 3, 
+                     .lenr   = 2,
+                     .order  = MATLIB_COL_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = A2_cm};
+
+    DEBUG_PRINT_XM( M2, "%s:", "M2");
+
+    matlib_real A3_tmp[10]   = {0.0,};
+    matlib_xm M3 = { .lenc   = 5, 
+                     .lenr   = 2,
+                     .order  = MATLIB_COL_MAJOR,
+                     .op     = MATLIB_NO_TRANS, 
+                     .elem_p = A3_tmp};
+
+    matlib_xv VM3 = { .len    = M3.lenc*M3.lenr, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = M3.elem_p};
+
+    matlib_xv VA3 = { .len    = 10, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = A3_cm};
+
+    matlib_xgemm( 1.0, M1, M2, 0.0, M3);
+    DEBUG_PRINT_XM( M3, "%s:", "M3");
+
+    matlib_real norm_actual = matlib_xnrm2(VA3);
+    matlib_xaxpy(-1.0, VA3, VM3);
+    matlib_real e_relative = matlib_xnrm2(VM3)/norm_actual;
+
+    debug_exit("Relative error: %0.16g", e_relative);
+    CU_ASSERT_TRUE(e_relative<TOL);
+}
+
+
+/* B1 5-by-3 */ 
+static matlib_real B1_rm[15] =
+{
+6.073039406856346e-01,     
+3.502180134411050e-01,     
+2.564409922291473e-01, 
+4.501376969658960e-01,     
+6.620095983591345e-01,     
+6.134607368128753e-01,
+4.587254936488678e-01,     
+4.161585899697965e-01,     
+5.822491645272271e-01,
+6.619447519056519e-01,     
+8.419291526913090e-01,     
+5.407393371244097e-01,
+7.702855148036601e-01,     
+8.329168190752158e-01,     
+8.699410323580073e-01
+};
+
+static matlib_real B1_cm[15] =
+{
+6.073039406856346e-01,           
+4.501376969658960e-01,          
+4.587254936488678e-01,          
+6.619447519056519e-01,          
+7.702855148036601e-01,          
+3.502180134411050e-01,
+6.620095983591345e-01,
+4.161585899697965e-01,
+8.419291526913090e-01,
+8.329168190752158e-01,
+2.564409922291473e-01,
+6.134607368128753e-01,
+5.822491645272271e-01,
+5.407393371244097e-01,
+8.699410323580073e-01
+};
+/* B2 3-by-5 */ 
+static matlib_real B2_rm[15] =
+{
+2.647790264756300e-01,     
+9.398294703449206e-01,     
+6.393169610401084e-01,     
+5.438859339996390e-01,     
+9.937046241208520e-01,
+3.180740754810591e-01,     
+6.455518749725235e-01,     
+5.447161105267628e-01,     
+7.210466205798114e-01,     
+2.186766323996339e-01,
+1.192145410541912e-01,     
+4.794632249488878e-01,     
+6.473114802931277e-01,     
+5.224953057771021e-01,     
+1.057982732502282e-01
+};
+
+static matlib_real B2_cm[15] =
+{
+2.647790264756300e-01,                    
+3.180740754810591e-01,                    
+1.192145410541912e-01,                    
+9.398294703449206e-01,
+6.455518749725235e-01,
+4.794632249488878e-01,
+6.393169610401084e-01,
+5.447161105267628e-01,
+6.473114802931277e-01,
+5.438859339996390e-01,
+7.210466205798114e-01,
+5.224953057771021e-01,
+9.937046241208520e-01,
+2.186766323996339e-01,
+1.057982732502282e-01
+};
+
+/* B3 5-by-5 */ 
+static matlib_real B3_rm[25] = 
+{
+3.027681122277280e-01,     
+9.198000612823005e-01,     
+7.450263021925583e-01,     
+7.168168007079032e-01,     
+7.071962440595404e-01,
+4.028885523341940e-01,     
+1.144546074044109e+00,     
+1.045488135671457e+00,     
+1.042693700694285e+00,     
+6.569730272131463e-01,
+3.232427153143438e-01,     
+9.789427579186712e-01,     
+8.968558456314233e-01,     
+8.537865437437568e-01,     
+6.084427594481442e-01,
+5.075289157583045e-01,     
+1.424888755129385e+00,     
+1.231831661324599e+00,     
+1.249626375258583e+00,     
+8.990970808570247e-01,
+5.725943168147356e-01,     
+1.678732774532179e+00,     
+1.509282621959860e+00,     
+1.474059419993597e+00,     
+1.039613982071089e+00
+};
+
+static matlib_real B3_cm[25] =
+{
+3.027681122277280e-01,                    
+4.028885523341940e-01,                    
+3.232427153143438e-01,                    
+5.075289157583045e-01,                    
+5.725943168147356e-01,                    
+9.198000612823005e-01,
+1.144546074044109e+00,
+9.789427579186712e-01,
+1.424888755129385e+00,
+1.678732774532179e+00,
+7.450263021925583e-01, 
+1.045488135671457e+00,
+8.968558456314233e-01,
+1.231831661324599e+00,
+1.509282621959860e+00,
+7.168168007079032e-01,
+1.042693700694285e+00,
+8.537865437437568e-01,
+1.249626375258583e+00,
+1.474059419993597e+00,
+7.071962440595404e-01,
+6.569730272131463e-01,
+6.084427594481442e-01,
+8.990970808570247e-01,
+1.039613982071089e+00
+};
+
+void test_matlib3(void)
+{
+    /* 
+     * M3 = M1*M2;
+     *
+     * */ 
+
+    matlib_xm M1 = { .lenc = 5, 
+                     .lenr = 3,
+                     .order = MATLIB_ROW_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = B1_rm};
+
+    DEBUG_PRINT_XM( M1, "%s:", "M1");
+    matlib_xm M2 = { .lenc = 3, 
+                     .lenr = 5,
+                     .order = MATLIB_ROW_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = B2_rm};
+
+    DEBUG_PRINT_XM( M2, "%s:", "M2");
+
+    matlib_real B3_tmp[5][5];
+    matlib_xm M3 = { .lenc = 5, 
+                     .lenr = 5,
+                     .order = MATLIB_ROW_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = &B3_tmp[0][0]};
+
+    matlib_xv VM3 = { .len    = M3.lenc*M3.lenr, 
+                      .type   = MATLIB_ROW_VECT, 
+                      .elem_p = M3.elem_p};
+
+    matlib_xv VB3 = { .len    = 25, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = B3_rm};
+
+    matlib_xgemm( 1.0, M1, M2, 0, M3);
+    DEBUG_PRINT_XM( M3, "%s:", "M3");
+
+    matlib_real norm_actual = matlib_xnrm2(VB3);
+    matlib_xaxpy(-1.0, VB3, VM3);
+    matlib_real e_relative = matlib_xnrm2(VM3)/norm_actual;
+
+    debug_exit("Relative error: %0.16g", e_relative);
+    CU_ASSERT_TRUE(e_relative<TOL);
+}
+
+
+void test_matlib4(void)
+{
+    /* 
+     * M3 = M1*M2;
+     *
+     * */ 
+
+    matlib_xm M1 = { .lenc = 5, 
+                     .lenr = 3,
+                     .order = MATLIB_COL_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = B1_cm};
+
+    DEBUG_PRINT_XM( M1, "%s:", "M1");
+
+    matlib_xm M2 = { .lenc = 3, 
+                     .lenr = 5,
+                     .order = MATLIB_COL_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = B2_cm};
+
+    DEBUG_PRINT_XM( M2, "%s:", "M2");
+
+    matlib_real B3_tmp[25] = {0.0,};
+    matlib_xm M3 = { .lenc = 5, 
+                     .lenr = 5,
+                     .order = MATLIB_COL_MAJOR,
+                     .op = MATLIB_NO_TRANS, 
+                     .elem_p = B3_tmp};
+
+    matlib_xv VM3 = { .len    = M3.lenc*M3.lenr, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = M3.elem_p};
+
+    matlib_xv VB3 = { .len    = 25, 
+                      .type   = MATLIB_COL_VECT, 
+                      .elem_p = B3_cm};
+
+    matlib_xgemm( 1.0, M1, M2, 0, M3);
+    DEBUG_PRINT_XM( M3, "%s:", "M3");
+
+    matlib_real norm_actual = matlib_xnrm2(VB3);
+    matlib_xaxpy(-1.0, VB3, VM3);
+    matlib_real e_relative = matlib_xnrm2(VM3)/norm_actual;
+
+    debug_exit("Relative error: %0.16g", e_relative);
+    CU_ASSERT_TRUE(e_relative<TOL);
+}
+
+
+
+/*============================================================================+/
+ |
+ |
+/+============================================================================*/
+
 
 int main()
 {
@@ -349,13 +781,17 @@ int main()
         { "Real matrix-matrix multiplication"    , test_xgemm },
         { "Complex matrix-matrix multiplication" , test_zgemm },
         { "Complex matrices"                     , test_complex },
+        { "gemm 1", test_matlib1 },
+        { "gemm 2", test_matlib2 },
+        { "gemm 3", test_matlib3 },
+        { "gemm 4", test_matlib4 },
         CU_TEST_INFO_NULL,
     };
 
     /* Create the test suite */ 
     CU_SuiteInfo suites[] = 
     {
-        { "Matrix Library", init_suite, clean_suite, test_array },
+        { "Matrix Library", init_suite, clean_suite, NULL, NULL, test_array },
         CU_SUITE_INFO_NULL,
     }; 
 

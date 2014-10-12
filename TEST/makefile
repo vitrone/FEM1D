@@ -17,7 +17,7 @@ MKL_PATH   = "$(MKLROOT)/lib/intel64"
 CMPLR_PATH = "$(MKLROOT)/../compiler/lib/intel64"
 EXT = so
 
-IFACE_LIB     = $(MKL_PATH)/libmkl_intel_lp64.$(EXT)
+IFACE_LIB     = $(MKL_PATH)/libmkl_intel_ilp64.$(EXT)
 THREADING_LIB = $(MKL_PATH)/libmkl_intel_thread.$(EXT)
 OMP_LIB       = -L$(CMPLR_PATH) -liomp5
 CORE_LIB      = $(MKL_PATH)/libmkl_core.$(EXT)
@@ -37,7 +37,7 @@ OPTIMIZE = -Ofast -funroll-all-loops
 
 CFLAGS = $(INCLUDES) -ansi -D_GNU_SOURCE -fexceptions -fPIC  \
 	 $(MACH_DEP_OPT) $(OPTIMIZE)                          \
-         -fno-omit-frame-pointer -std=c99
+         -fno-omit-frame-pointer -std=c99 -DMKL_ILP64 -m64
 
 LDFLAGS = -L../BUILD -L$(MKL_PATH) $(MKL_LIBS) -lpthread -lm -lcunit -lfem1d -lmkl_rt
 
@@ -71,11 +71,11 @@ bin_dir:
 
 $(TSTBIN)/% : $(TSTBIN)/%.o $(FEMLIB)
 	@echo "Building binary files..."
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CLIBS) $< -o $@ 
+	$(CC) $< -o $@ $(CFLAGS) $(LDFLAGS) $(CLIBS) 
 
 $(TSTBIN)/%.o : %.c
 	@echo "Building object files..."
-	$(CC) $(CFLAGS) -c $< -o $@ 
+	$(CC) -c $< -o $@ $(CFLAGS) 
 
 
 clean :

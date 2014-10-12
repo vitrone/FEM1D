@@ -15,7 +15,7 @@
 #include "mkl.h"
 #include "mkl_pardiso.h"
 
-//#define NDEBUG
+#define NDEBUG
 
 #include "legendre.h"
 #include "fem1d.h"
@@ -46,7 +46,7 @@ void poly_func
           matlib_xv y
 )
 {
-    int deg = 10;
+    matlib_int deg = 10;
     matlib_index i;
     if(y.len >= x.len)
     {
@@ -150,12 +150,12 @@ void test_solver_dsym
 {
     debug_enter("%s", "");
     matlib_index i;
-    int mtype = -2; /* Matrix type: real symmetric */ 
-    int nrhs  =  1; /* Number of right hand sides  */ 
+    matlib_int mtype = -2; /* Matrix type: real symmetric */ 
+    matlib_index nrhs  =  1; /* Number of right hand sides  */ 
 
     /* SETUP PARADISO CONTROL PARAMETERS */
     void* ptr[64];
-    int iparam[64];
+    matlib_int iparam[64];
     for (i = 0; i < 64; i++)
     {
         iparam[i] = 0;
@@ -175,7 +175,8 @@ void test_solver_dsym
     iparam[18] =  1; /*  */ 
     iparam[34] =  1; /* Zero-based indexing  */ 
 
-    int maxfct, mnum, phase, error, msglvl;
+    matlib_index maxfct, mnum, msglvl;
+    matlib_int phase, error;
     maxfct = 1; /* Maximum number of numerical factorizations. */
     mnum   = 1; /* Which factorization to use. */
     msglvl = 0; /* Print statistical information in file */
@@ -186,10 +187,10 @@ void test_solver_dsym
      * */
     phase = 11; /* Analysis */
     matlib_real ddummy;
-    int idummy;
+    matlib_int idummy;
     debug_body("%s", "Start testing PARADISO");
 
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, NULL, 
               &nrhs, iparam, &msglvl, NULL, NULL, &error);
     if (error != 0)
@@ -201,7 +202,7 @@ void test_solver_dsym
     /* Numerical factorization. 
      * */
     phase = 22;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, NULL, 
               &nrhs, iparam, &msglvl, NULL, NULL, &error);
     if (error != 0)
@@ -213,7 +214,7 @@ void test_solver_dsym
     /* Back substitution and iterative refinement.
      * */ 
     phase = 33;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, NULL, 
               &nrhs, iparam, &msglvl, b.elem_p, x.elem_p, &error);
     if (error != 0)
@@ -223,7 +224,7 @@ void test_solver_dsym
     /* Termination and release of memory 
      * */ 
     phase = -1;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, NULL, A.rowIn, A.colIn, NULL, 
               NULL, iparam, &msglvl, NULL, NULL, &error);
     
@@ -242,12 +243,12 @@ void test_solver_zsym
 {
     debug_enter("%s", "");
     matlib_index i;
-    int mtype = 6; /* Matrix type: real symmetric */ 
-    int nrhs  = 1; /* Number of right hand sides  */ 
+    matlib_int mtype = 6; /* Matrix type: real symmetric */ 
+    matlib_int nrhs  = 1; /* Number of right hand sides  */ 
 
     /* SETUP PARADISO CONTROL PARAMETERS */
     void* ptr[64];
-    int iparam[64];
+    matlib_int iparam[64];
     for (i = 0; i < 64; i++)
     {
         iparam[i] = 0;
@@ -267,7 +268,7 @@ void test_solver_zsym
     iparam[18] =  1; /*  */ 
     iparam[34] =  1; /* Zero-based indexing  */ 
 
-    int maxfct, mnum, phase, error, msglvl;
+    matlib_int maxfct, mnum, phase, error, msglvl;
     maxfct = 1; /* Maximum number of numerical factorizations. */
     mnum   = 1; /* Which factorization to use. */
     msglvl = 0; /* Print statistical information in file */
@@ -278,10 +279,10 @@ void test_solver_zsym
      * */
     phase = 11; /* Analysis */
     matlib_real ddummy;
-    int idummy;
+    matlib_int idummy;
     debug_body("%s", "Start testing PARADISO");
 
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, &idummy, 
               &nrhs, iparam, &msglvl, &ddummy, &ddummy, &error);
     if (error != 0)
@@ -293,7 +294,7 @@ void test_solver_zsym
     /* Numerical factorization. 
      * */
     phase = 22;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, &idummy, 
               &nrhs, iparam, &msglvl, &ddummy, &ddummy, &error);
     if (error != 0)
@@ -305,7 +306,7 @@ void test_solver_zsym
     /* Back substitution and iterative refinement.
      * */ 
     phase = 33;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, &idummy, 
               &nrhs, iparam, &msglvl, b.elem_p, x.elem_p, &error);
     if (error != 0)
@@ -315,7 +316,7 @@ void test_solver_zsym
     /* Termination and release of memory 
      * */ 
     phase = -1;
-    PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
+    _MATLIB_PARDISO ( ptr, &maxfct, &mnum, &mtype, &phase,
               &A.lenc, A.elem_p, A.rowIn, A.colIn, &idummy, 
               &nrhs, iparam, &msglvl, &ddummy, &ddummy, &error);
     
@@ -748,7 +749,7 @@ int main(void)
     /* Create the test suite */ 
     CU_SuiteInfo suites[] = 
     {
-        { "Linear solvers", init_suite, clean_suite, test_array },
+        { "Linear solvers", init_suite, clean_suite, NULL, NULL, test_array },
         CU_SUITE_INFO_NULL,
     }; 
 

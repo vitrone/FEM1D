@@ -15,7 +15,7 @@ MKL_PATH   = "$(MKLROOT)/lib/intel64"
 CMPLR_PATH = "$(MKLROOT)/../compiler/lib/intel64"
 EXT = so
 
-IFACE_LIB     = $(MKL_PATH)/libmkl_intel_lp64.$(EXT)
+IFACE_LIB     = $(MKL_PATH)/libmkl_intel_ilp64.$(EXT)
 THREADING_LIB = $(MKL_PATH)/libmkl_intel_thread.$(EXT)
 OMP_LIB       = -L$(CMPLR_PATH) -liomp5
 CORE_LIB      = $(MKL_PATH)/libmkl_core.$(EXT)
@@ -31,7 +31,7 @@ INCLUDES = -I/usr/local/MATLAB/R2013a/extern/include   \
 # $(CC) -c $(CFLAGS)
 CFLAGS = -ansi -D_GNU_SOURCE -DMATLAB_MEX_FILE -fexceptions -fPIC   \
          -fno-omit-frame-pointer -std=c99                           \
-         $(INCLUDES)
+         $(INCLUDES) -DMKL_ILP64 -m64
 
 LDFLAGS = -shared -L$(MKL_PATH) $(MKL_LIBS) -L../BUILD                                     \
           -Wl,--version-script,/usr/local/MATLAB/R2013a/extern/lib/glnxa64/mexFunction.map \
@@ -58,7 +58,8 @@ SOURCES =   mxLGLdataFM.c    \
             mxfem1d_PrjL2F.c \
             mxfem1d_Norm2.c  \
             gfilters.c       \
-            pf_pade_exp.c    
+            pf_pade_exp.c    \
+            mxmatlib_gemm.c    
 
 
 TARGETS = $(SOURCES:%.c=$(BUILDDIR)/%.mexa64)
@@ -101,11 +102,11 @@ all : $(TARGETS)
 
 $(BUILDDIR)/%.mexa64 : $(BUILDDIR)/%.o $(LIB_DEP)
 	@echo "Building mex-binary files..."
-	$(CC) $(LDFLAGS) $< -o $@ $(CLIBS) 
+	$(CC) $< -o $@ $(LDFLAGS) $(CLIBS) 
 
 $(BUILDDIR)/%.o : %.c
 	@echo "Building object files..."
-	$(CC) $(CFLAGS) -c $< -o $@ 
+	$(CC) -c $< -o $@ $(CFLAGS) 
 
 # Note: The following contruct gives error while running the MATLAB unittester.
 # In fact it is incorrect because it lists all the elements in OBJECTS as

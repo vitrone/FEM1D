@@ -68,7 +68,7 @@ BUILDDIR = ../BUILD
 # (1) Static type: extension '.a', requires static linking
 # (1) Shared type: extension '.so', requires dynamic linking
 
-EXT = a
+EXT = so
 
 #ifeq ($(SD),static)
 #  EXT=a
@@ -97,7 +97,7 @@ MKL_PATH   = "$(MKLROOT)/lib/intel64"
 CMPLR_PATH = "$(MKLROOT)/../compiler/lib/intel64"
 
 # OpenMP library : OMP_LIB for parallelism in MKL
-IFACE_LIB      = $(MKL_PATH)/libmkl_intel_lp64.$(EXT)
+IFACE_LIB      = $(MKL_PATH)/libmkl_intel_ilp64.$(EXT)
 THREADING_LIB  = $(MKL_PATH)/libmkl_intel_thread.$(EXT)
 SEQUENTIAL_LIB = $(MKL_PATH)/libmkl_sequential.$(EXT)
 OMP_LIB        = -L$(CMPLR_PATH) -liomp5
@@ -115,7 +115,7 @@ INCLUDES = -I$(INC_DIR) -I$(MKLROOT)/include
 
 CFLAGS = $(INCLUDES) -ansi -D_GNU_SOURCE -fexceptions -fPIC   \
          -fno-omit-frame-pointer -std=c99                     \
-	 $(MACH_DEP_OPT) $(OPTIMIZE)                          
+	 $(MACH_DEP_OPT) $(OPTIMIZE) -DMKL_ILP64 -m64                         
           
 
 LDFLAGS =  -shared -L$(MKL_PATH) $(MKL_LIBS) -lpthread -lm -lmkl_rt
@@ -157,11 +157,11 @@ all : $(TARGET)
 
 $(TARGET): $(OBJECTS) $(HEADERS)
 	@echo "Creating shared object..."	
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
+	$(CC) -o $(TARGET) $(CFLAGS) $(LDFLAGS) $(OBJECTS)
 
 $(BUILDDIR)/%.o: %.c
 	@echo "Building object files..."
-	$(CC) $(CFLAGS) -c $< -o $@ 	
+	$(CC) -c $< -o $@ $(CFLAGS) 	
 
 clean :
 	rm -f $(OBJECTS)
